@@ -16,7 +16,7 @@ import torch
 def labelFlipping(
     dataset,
     indices,
-    poisoned_persent=0,
+    poisoned_percent=0,
     targeted=False,
     target_label=4,
     target_changed_label=7,
@@ -56,9 +56,9 @@ def labelFlipping(
     # classes = new_dataset.classes
     # class_to_idx = new_dataset.class_to_idx
     # class_list = [class_to_idx[i] for i in classes]
-    class_list = set(targets.tolist())
+    class_list = list(set(targets.tolist()))
     if not targeted:
-        num_flipped = int(poisoned_persent * num_indices)
+        num_flipped = int(poisoned_percent * num_indices)
         if num_indices == 0:
             return new_dataset
         if num_flipped > num_indices:
