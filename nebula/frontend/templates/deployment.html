@@ -283,6 +283,11 @@
                         </select>
                         <input type="number" class="form-control" id="predefined-topology-nodes"
                             placeholder="Number of nodes" min="1" value="3" oninput="greaterthan0(this)" style="display: inline; width: 40%">
+                        <div id="random-topology-options" style="display: none; margin-top: 10px;">
+                            <label for="random-probability">Edge Probability:</label>
+                            <input type="number" class="form-control" id="random-probability" 
+                                placeholder="Probability (0-1)" min="0" max="1" step="0.1" value="0.5" style="display: inline; width: 40%">
+                        </div>
                     </div>
                 </div>
                 <div class="form-group row container-shadow tiny grey">
@@ -2355,6 +2360,7 @@
 
 
             if ($("#predefined-topology-select").val() === 'Fully') {
+                $("#random-topology-options").hide();
                 // Update gData: create a link between each node
                 for (var i = 0; i < gData.nodes.length; i++) {
                     for (var j = 0; j < gData.nodes.length; j++) {
@@ -2366,6 +2372,7 @@
             }
             // If networkTopology is changed to Ring, gData is updated to a ring graph
             else if ($("#predefined-topology-select").val() === 'Ring') {
+                $("#random-topology-options").hide();
                 // Update gData: create a link between each node and its two neighbors
                 for (var i = 0; i < gData.nodes.length; i++) {
                     gData.links.push({ source: i, target: (i + 1) % gData.nodes.length });
@@ -2374,19 +2381,24 @@
             }
             // If networkTopology is changed to Star, gData is updated to a star graph
             else if ($("#predefined-topology-select").val() === 'Star') {
+                $("#random-topology-options").hide();
                 // Update gData: create a link between each node and the central node
                 for (var i = 0; i < gData.nodes.length; i++) {
                     gData.links.push({ source: i, target: 0 });
                 }
             } else if ($("#predefined-topology-select").val() === 'Random') {
-                // Update gData: create a link between each node and a random node
-                for (var i = 0; i < gData.nodes.length; i++) {
-                    var randomNode = Math.floor(Math.random() * gData.nodes.length);
-                    while (randomNode === i) {
-                        randomNode = Math.floor(Math.random() * gData.nodes.length);
-                    }
-                    gData.links.push({ source: i, target: randomNode });
-                }
+                // Show probability input
+                $("#random-topology-options").show();
+                const probability = parseFloat($("#random-probability").val());
+                
+                // Clear existing links
+                gData.links = [];
+                
+                // Generate random links using Erdős-Rényi model
+                gData.links = generateRandomLinks(gData.nodes, probability);
+            } else {
+                // Hide probability input
+                $("#random-topology-options").hide();
             }
 
             if (document.getElementById("predefined-topology-nodes").value > 10) {
