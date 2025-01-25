@@ -2420,6 +2420,25 @@
         document.getElementById("predefined-topology-select").addEventListener("change", function (){
             updateNodes();
         });
+
+        function generateRandomLinks(nodes, probability) {
+            const links = [];
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    if (Math.random() < probability) {
+                        links.push({ source: i, target: j });
+                    }
+                }
+            }
+            return links;
+        }
+
+        // Add event listener for probability changes
+        document.getElementById("random-probability").addEventListener("change", function() {
+            if ($("#predefined-topology-select").val() === 'Random') {
+                updateNodes();
+            }
+        });
     </script>
 
     <script>
