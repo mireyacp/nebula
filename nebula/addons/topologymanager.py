@@ -225,6 +225,10 @@ class TopologyManager:
         if self.b_fully_connected:
             self.__fully_connected()
             return
+        
+        if self.topology is not None and len(self.topology) > 0:
+            # Topology was already provided
+            return
 
         if self.b_symmetric:
             self.__randomly_pick_neighbors_symmetric()
@@ -280,6 +284,20 @@ class TopologyManager:
             None: The method modifies the internal `self.topology` to the provided custom topology.
         """
         self.topology = topology
+    
+    def generate_random_topology(self, probability):
+        """
+        Generates a random topology using Erdos-Renyi model with given probability.
+
+        Args:
+            probability (float): Probability of edge creation between any two nodes (0-1)
+
+        Returns:
+            None: Updates self.topology with the generated random topology
+        """
+        random_graph = nx.erdos_renyi_graph(self.n_nodes, probability)
+        self.topology = nx.to_numpy_array(random_graph, dtype=np.float32)
+        np.fill_diagonal(self.topology, 0)  # No self-loops
 
     def get_matrix_adjacency_from_neighbors(self, neighbors):
         """

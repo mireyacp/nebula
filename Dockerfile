@@ -24,7 +24,7 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
 RUN apt-get update && apt-get install -y build-essential gcc g++ clang git make cmake
 
 # Install docker
-RUN apt-get install -y ca-certificates curl gnupg
+RUN apt-get update && apt-get install -y ca-certificates curl gnupg
 RUN install -m 0755 -d /etc/apt/keyrings
 RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 RUN chmod a+r /etc/apt/keyrings/docker.gpg

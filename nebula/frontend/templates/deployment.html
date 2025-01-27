@@ -1076,6 +1076,7 @@
             data["nodes_graph"] = nodesGraph
             data["n_nodes"] = getNumberOfNodes()
             data["matrix"] = getMatrix(Graph.graphData().nodes, Graph.graphData().links)
+            data["random_topology_probability"] = parseFloat(document.getElementById("random-probability").value)
             // Step 5
             data["dataset"] = document.getElementById("datasetSelect").value
             data["iid"] = document.getElementById("iidSelect").value === "true"
@@ -1155,6 +1156,9 @@
                     document.getElementById("predefined-topology-btn").click();
                     document.getElementById("predefined-topology-select").value = data["topology"];
                     document.getElementById("predefined-topology-nodes").value = data["n_nodes"];
+                    if ("random_topology_probability" in data) {
+                        document.getElementById("random-probability").value = data["random_topology_probability"];
+                    }
                 }
                 gData.nodes = data["nodes_graph"]
                 // Add links manually
