@@ -98,12 +98,7 @@
   },
   "adversarial_args": {
     "attacks": "No Attack",
-    "targeted": false,
-    "poisoned_sample_percent": 0,
-    "poisoned_ratio": 0,
-    "target_label": 0,
-    "noise_type": "salt",
-    "target_changed_label": 0
+    "attack_params" : {}
   },
   "tracking_args": {
     "enable_remote_tracking": false,

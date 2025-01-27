@@ -51,6 +51,7 @@ class Scenario:
         poisoned_node_percent,
         poisoned_sample_percent,
         poisoned_noise_percent,
+        attack_params,
         with_reputation,
         is_dynamic_topology,
         is_dynamic_aggregation,
@@ -97,6 +98,11 @@ class Scenario:
             attacks (list): List of attacks.
             poisoned_node_percent (float): Percentage of poisoned nodes.
             poisoned_sample_percent (float): Percentage of poisoned samples.
+            noise_type (str): The type of noise applied by the attack.
+            targeted (bool): Indicator if the attack is targeted.
+            target_label (int): The label to change when `targeted` is True.
+            target_changed_label (int): The label to which `target_label` will be changed .
+            attack_params (dict) : Attack parameters.
             is_dynamic_topology (bool): Indicator if topology is dynamic.
             is_dynamic_aggregation (bool): Indicator if aggregation is dynamic.
             target_aggregation (str): Target aggregation method.
@@ -139,6 +145,7 @@ class Scenario:
         self.poisoned_node_percent = poisoned_node_percent
         self.poisoned_sample_percent = poisoned_sample_percent
         self.poisoned_noise_percent = poisoned_noise_percent
+        self.attack_params = attack_params
         self.with_reputation = with_reputation
         self.is_dynamic_topology = is_dynamic_topology
         self.is_dynamic_aggregation = is_dynamic_aggregation
@@ -163,6 +170,7 @@ class Scenario:
         poisoned_node_percent,
         poisoned_sample_percent,
         poisoned_noise_percent,
+        attack_params
     ):
         """Identify which nodes will be attacked"""
         import math
@@ -202,10 +210,11 @@ class Scenario:
                 node_att = attack
                 attack_sample_percent = poisoned_sample_percent / 100
                 poisoned_ratio = poisoned_noise_percent / 100
+                attack_params["poisoned_percent"] = attack_sample_percent
+                attack_params["poisoned_ratio"] = poisoned_ratio
             nodes[node]["malicious"] = malicious
             nodes[node]["attacks"] = node_att
-            nodes[node]["poisoned_sample_percent"] = attack_sample_percent
-            nodes[node]["poisoned_ratio"] = poisoned_ratio
+            nodes[node]["attack_params"] = attack_params
         return nodes
 
     def mobility_assign(self, nodes, mobile_participants_percent):
@@ -302,6 +311,7 @@ class ScenarioManagement:
             int(self.scenario.poisoned_node_percent),
             int(self.scenario.poisoned_sample_percent),
             int(self.scenario.poisoned_noise_percent),
+            self.scenario.attack_params
         )
 
         if self.scenario.mobility:
@@ -345,8 +355,7 @@ class ScenarioManagement:
             participant_config["device_args"]["logging"] = self.scenario.logginglevel
             participant_config["aggregator_args"]["algorithm"] = self.scenario.agg_algorithm
             participant_config["adversarial_args"]["attacks"] = node_config["attacks"]
-            participant_config["adversarial_args"]["poisoned_sample_percent"] = node_config["poisoned_sample_percent"]
-            participant_config["adversarial_args"]["poisoned_ratio"] = node_config["poisoned_ratio"]
+            participant_config["adversarial_args"]["attack_params"] = node_config["attack_params"]
             participant_config["defense_args"]["with_reputation"] = self.scenario.with_reputation
             participant_config["defense_args"]["is_dynamic_topology"] = self.scenario.is_dynamic_topology
             participant_config["defense_args"]["is_dynamic_aggregation"] = self.scenario.is_dynamic_aggregation

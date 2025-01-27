@@ -226,33 +226,33 @@ class CommunicationsManager:
                     if self.config.participant["adaptive_args"]["model_similarity"]:
                         logging.info("🤖  handle_model_message | Checking model similarity")
                         cosine_value = cosine_metric(
-                            self.trainer.get_model_parameters(),
+                            self.engine.trainer.get_model_parameters(),
                             decoded_model,
                             similarity=True,
                         )
                         euclidean_value = euclidean_metric(
-                            self.trainer.get_model_parameters(),
+                            self.engine.trainer.get_model_parameters(),
                             decoded_model,
                             similarity=True,
                         )
                         minkowski_value = minkowski_metric(
-                            self.trainer.get_model_parameters(),
+                            self.engine.trainer.get_model_parameters(),
                             decoded_model,
                             p=2,
                             similarity=True,
                         )
                         manhattan_value = manhattan_metric(
-                            self.trainer.get_model_parameters(),
+                            self.engine.trainer.get_model_parameters(),
                             decoded_model,
                             similarity=True,
                         )
                         pearson_correlation_value = pearson_correlation_metric(
-                            self.trainer.get_model_parameters(),
+                            self.engine.trainer.get_model_parameters(),
                             decoded_model,
                             similarity=True,
                         )
                         jaccard_value = jaccard_metric(
-                            self.trainer.get_model_parameters(),
+                            self.engine.trainer.get_model_parameters(),
                             decoded_model,
                             similarity=True,
                         )

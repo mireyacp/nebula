@@ -61,13 +61,10 @@ class Engine:
     def __init__(
         self,
         model,
-        dataset,
+        datamodule,
         config=Config,
         trainer=Lightning,
         security=False,
-        model_poisoning=False,
-        poisoned_ratio=0,
-        noise_type="gaussian",
     ):
         self.config = config
         self.idx = config.participant["device_args"]["idx"]
@@ -97,11 +94,8 @@ class Engine:
         self.log_dir = os.path.join(config.participant["tracking_args"]["log_dir"], self.experiment_name)
 
         self.security = security
-        self.model_poisoning = model_poisoning
-        self.poisoned_ratio = poisoned_ratio
-        self.noise_type = noise_type
 
-        self._trainer = trainer(model, dataset, config=self.config)
+        self._trainer = trainer(model, datamodule, config=self.config)
         self._aggregator = create_aggregator(config=self.config, engine=self)
 
         self._secure_neighbors = []
@@ -580,41 +574,27 @@ class MaliciousNode(Engine):
     def __init__(
         self,
         model,
-        dataset,
+        datamodule,
         config=Config,
         trainer=Lightning,
         security=False,
-        model_poisoning=False,
-        poisoned_ratio=0,
-        noise_type="gaussian",
     ):
         super().__init__(
             model,
-            dataset,
+            datamodule,
             config,
             trainer,
             security,
-            model_poisoning,
-            poisoned_ratio,
-            noise_type,
         )
-        self.attack = create_attack(config.participant["adversarial_args"]["attacks"])
-        self.fit_time = 0.0
-        self.extra_time = 0.0
-
-        self.round_start_attack = 3
-        self.round_stop_attack = 6
-
+        self.attack = create_attack(self)
         self.aggregator_bening = self._aggregator
 
     async def _extended_learning_cycle(self):
-        if self.attack != None:
-            if self.round in range(self.round_start_attack, self.round_stop_attack):
-                logging.info("Changing aggregation function maliciously...")
-                self._aggregator = create_malicious_aggregator(self._aggregator, self.attack)
-            elif self.round == self.round_stop_attack:
-                logging.info("Changing aggregation function benignly...")
-                self._aggregator = self.aggregator_bening
+        try:
+            await self.attack.attack()
+        except:
+            attack_name = self.config.participant["adversarial_args"]["attacks"]
+            logging.error(f"Attack {attack_name} failed")
 
         if self.role == "aggregator":
             await AggregatorNode._extended_learning_cycle(self)
@@ -628,23 +608,17 @@ class AggregatorNode(Engine):
     def __init__(
         self,
         model,
-        dataset,
+        datamodule,
         config=Config,
         trainer=Lightning,
         security=False,
-        model_poisoning=False,
-        poisoned_ratio=0,
-        noise_type="gaussian",
     ):
         super().__init__(
             model,
-            dataset,
+            datamodule,
             config,
             trainer,
             security,
-            model_poisoning,
-            poisoned_ratio,
-            noise_type,
         )
 
     async def _extended_learning_cycle(self):
@@ -667,23 +641,17 @@ class ServerNode(Engine):
     def __init__(
         self,
         model,
-        dataset,
+        datamodule,
         config=Config,
         trainer=Lightning,
         security=False,
-        model_poisoning=False,
-        poisoned_ratio=0,
-        noise_type="gaussian",
     ):
         super().__init__(
             model,
-            dataset,
+            datamodule,
             config,
             trainer,
             security,
-            model_poisoning,
-            poisoned_ratio,
-            noise_type,
         )
 
     async def _extended_learning_cycle(self):
@@ -705,23 +673,17 @@ class TrainerNode(Engine):
     def __init__(
         self,
         model,
-        dataset,
+        datamodule,
         config=Config,
         trainer=Lightning,
         security=False,
-        model_poisoning=False,
-        poisoned_ratio=0,
-        noise_type="gaussian",
     ):
         super().__init__(
             model,
-            dataset,
+            datamodule,
             config,
             trainer,
             security,
-            model_poisoning,
-            poisoned_ratio,
-            noise_type,
         )
 
     async def _extended_learning_cycle(self):
@@ -748,23 +710,17 @@ class IdleNode(Engine):
     def __init__(
         self,
         model,
-        dataset,
+        datamodule,
         config=Config,
         trainer=Lightning,
         security=False,
-        model_poisoning=False,
-        poisoned_ratio=0,
-        noise_type="gaussian",
     ):
         super().__init__(
             model,
-            dataset,
+            datamodule,
             config,
             trainer,
             security,
-            model_poisoning,
-            poisoned_ratio,
-            noise_type,
         )
 
     async def _extended_learning_cycle(self):

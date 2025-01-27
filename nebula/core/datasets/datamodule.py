@@ -23,14 +23,6 @@ class DataModule(LightningDataModule):
         batch_size=32,
         num_workers=0,
         val_percent=0.1,
-        label_flipping=False,
-        data_poisoning=False,
-        poisoned_percent=0,
-        poisoned_ratio=0,
-        targeted=False,
-        target_label=0,
-        target_changed_label=0,
-        noise_type="salt",
         seed=42,
     ):
         super().__init__()
@@ -44,14 +36,6 @@ class DataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.val_percent = val_percent
-        self.label_flipping = label_flipping
-        self.data_poisoning = data_poisoning
-        self.poisoned_percent = poisoned_percent
-        self.poisoned_ratio = poisoned_ratio
-        self.targeted = targeted
-        self.target_label = target_label
-        self.target_changed_label = target_changed_label
-        self.noise_type = noise_type
         self.seed = seed
 
         self.model_weight = None
@@ -68,14 +52,6 @@ class DataModule(LightningDataModule):
             tr_subset = ChangeableSubset(
                 self.train_set,
                 self.train_set_indices,
-                label_flipping=self.label_flipping,
-                data_poisoning=self.data_poisoning,
-                poisoned_percent=self.poisoned_percent,
-                poisoned_ratio=self.poisoned_ratio,
-                targeted=self.targeted,
-                target_label=self.target_label,
-                target_changed_label=self.target_changed_label,
-                noise_type=self.noise_type,
             )
 
             if self.val_indices is None:

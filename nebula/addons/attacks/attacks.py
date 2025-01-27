@@ -1,10 +1,6 @@
+from abc import ABC, abstractmethod
+import importlib
 import logging
-from copy import deepcopy
-from typing import Any
-
-import numpy as np
-import torch
-from torchmetrics.functional import pairwise_cosine_similarity
 
 # To take into account:
 # - Malicious nodes do not train on their own data
@@ -14,134 +10,133 @@ from torchmetrics.functional import pairwise_cosine_similarity
 #   its weights only (should be more effective if they are different).
 
 
-def create_attack(attack_name):
+class AttackException(Exception):
+    pass
+
+
+class Attack(ABC):
     """
-    Function to create an attack object from its name.
+    Base class for implementing various attack behaviors by dynamically injecting
+    malicious behavior into existing functions or methods.
+
+    This class provides an interface for replacing benign functions with malicious
+    behaviors and for defining specific attack implementations. Subclasses must
+    implement the `attack` and `_inject_malicious_behaviour` methods.
     """
-    if attack_name == "GLLNeuronInversionAttack":
-        return GLLNeuronInversionAttack()
-    elif attack_name == "NoiseInjectionAttack":
-        return NoiseInjectionAttack()
-    elif attack_name == "SwappingWeightsAttack":
-        return SwappingWeightsAttack()
-    elif attack_name == "DelayerAttack":
-        return DelayerAttack()
-    else:
-        return None
-
-
-class Attack:
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self.attack(*args, **kwds)
-
-    def attack(self, received_weights):
+    async def _replace_benign_function(function_route: str, malicious_behaviour):
         """
-        Function to perform the attack on the received weights. It should return the
-        attacked weights.
+        Dynamically replace a method in a class with a malicious behavior.
+
+        Args:
+            function_route (str): The route to the class and method to be replaced, in the format 'module.class.method'.
+            malicious_behaviour (callable): The malicious function that will replace the target method.
+
+        Raises:
+            AttributeError: If the specified class does not have the target method.
+            ImportError: If the module specified in `function_route` cannot be imported.
+            Exception: If any other error occurs during the process.
+
+        Returns:
+            None
+        """
+        try:
+            *module_route, class_and_func = function_route.rsplit(".", maxsplit=1)
+            module = ".".join(module_route)
+            class_name, function_name = class_and_func.split(".")
+
+            # Import the module
+            module_obj = importlib.import_module(module)
+
+            # Retrieve the class
+            changing_class = getattr(module_obj, class_name)
+
+            # Verify the class has the target method
+            if not hasattr(changing_class, function_name):
+                raise AttributeError(f"Class '{class_name}' has no method named: '{function_name}'.")
+
+            # Replace the original method with the malicious behavior
+            setattr(changing_class, function_name, malicious_behaviour)
+            print(f"Function '{function_name}' has been replaced with '{malicious_behaviour.__name__}'.")
+        except Exception as e:
+            logging.error(f"Error replacing function: {e}")
+
+    @abstractmethod
+    async def attack(self):
+        """
+        Abstract method to define the attack logic.
+
+        Subclasses must implement this method to specify the actions to perform
+        during an attack.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in a subclass.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    async def _inject_malicious_behaviour(self, target_function: callable, *args, **kwargs) -> None:
+        """
+        Abstract method to inject a malicious behavior into an existing function.
+
+        This method must be implemented in subclasses to define how the malicious
+        behavior should interact with the target function.
+
+        Args:
+            target_function (callable): The function to inject the malicious behavior into.
+            *args: Positional arguments for the malicious behavior.
+            **kwargs: Keyword arguments for the malicious behavior.
+
+        Raises:
+            NotImplementedError: If the method is not implemented in a subclass.
         """
         raise NotImplementedError
 
 
-class GLLNeuronInversionAttack(Attack):
+def create_attack(engine) -> Attack:
     """
-    Function to perform neuron inversion attack on the received weights.
+    Creates an attack object based on the attack name specified in the engine configuration.
+
+    This function uses a predefined map of available attacks (`ATTACK_MAP`) to instantiate
+    the corresponding attack class based on the attack name in the configuration. The attack 
+    parameters are also extracted from the configuration and passed when creating the attack object.
+
+    Args:
+        engine (object): The training engine object containing the configuration for the attack.
+
+    Returns:
+        Attack: An instance of the specified attack class.
+
+    Raises:
+        AttackException: If the specified attack name is not found in the `ATTACK_MAP`.
     """
+    from nebula.addons.attacks.communications.delayerattack import DelayerAttack
+    from nebula.addons.attacks.dataset.datapoison import SamplePoisoningAttack
+    from nebula.addons.attacks.dataset.labelflipping import LabelFlippingAttack
+    from nebula.addons.attacks.model.gllneuroninversion import GLLNeuronInversionAttack
+    from nebula.addons.attacks.model.modelpoison import ModelPoisonAttack
+    from nebula.addons.attacks.model.noiseinjection import NoiseInjectionAttack
+    from nebula.addons.attacks.model.swappingweights import SwappingWeightsAttack
 
-    def __init__(self, strength=5.0, perc=1.0):
-        super().__init__()
-        self.strength = strength
-        self.perc = perc
+    ATTACK_MAP = {
+        "GLL Neuron Inversion": GLLNeuronInversionAttack,
+        "Noise Injection": NoiseInjectionAttack,
+        "Swapping Weights": SwappingWeightsAttack,
+        "Delayer": DelayerAttack,
+        "Label Flipping": LabelFlippingAttack,
+        "Sample Poisoning": SamplePoisoningAttack,
+        "Model Poisoning": ModelPoisonAttack,
+    }
+    
+    # Get attack name and parameters from the engine configuration
+    attack_name = engine.config.participant["adversarial_args"]["attacks"]
+    attack_params = engine.config.participant["adversarial_args"].get("attack_params", {}).items()
+    
+    # Look up the attack class based on the attack name
+    attack = ATTACK_MAP.get(attack_name)
 
-    def attack(self, received_weights):
-        logging.info("[GLLNeuronInversionAttack] Performing neuron inversion attack")
-        lkeys = list(received_weights.keys())
-        logging.info(f"Layer inverted: {lkeys[-2]}")
-        received_weights[lkeys[-2]].data = torch.rand(received_weights[lkeys[-2]].shape) * 10000
-        return received_weights
-
-
-class NoiseInjectionAttack(Attack):
-    """
-    Function to perform noise injection attack on the received weights.
-    """
-
-    def __init__(self, strength=10000, perc=1.0):
-        super().__init__()
-        self.strength = strength
-        self.perc = perc
-
-    def attack(self, received_weights):
-        logging.info("[NoiseInjectionAttack] Performing noise injection attack")
-        lkeys = list(received_weights.keys())
-        for k in lkeys:
-            logging.info(f"Layer noised: {k}")
-            received_weights[k].data += torch.randn(received_weights[k].shape) * self.strength
-        return received_weights
-
-
-class SwappingWeightsAttack(Attack):
-    """
-    Function to perform swapping weights attack on the received weights. Note that this
-    attack performance is not consistent due to its stochasticity.
-
-    Warning: depending on the layer the code may not work (due to reshaping in between),
-    or it may be slow (scales quadratically with the layer size).
-    Do not apply to last layer, as it would make the attack detectable (high loss
-    on malicious node).
-    """
-
-    def __init__(self, layer_idx=0):
-        super().__init__()
-        self.layer_idx = layer_idx
-
-    def attack(self, received_weights):
-        logging.info("[SwappingWeightsAttack] Performing swapping weights attack")
-        lkeys = list(received_weights.keys())
-        wm = received_weights[lkeys[self.layer_idx]]
-
-        # Compute similarity matrix
-        sm = torch.zeros((wm.shape[0], wm.shape[0]))
-        for j in range(wm.shape[0]):
-            sm[j] = pairwise_cosine_similarity(wm[j].reshape(1, -1), wm.reshape(wm.shape[0], -1))
-
-        # Check rows/cols where greedy approach is optimal
-        nsort = np.full(sm.shape[0], -1)
-        rows = []
-        for j in range(sm.shape[0]):
-            k = torch.argmin(sm[j])
-            if torch.argmin(sm[:, k]) == j:
-                nsort[j] = k
-                rows.append(j)
-        not_rows = np.array([i for i in range(sm.shape[0]) if i not in rows])
-
-        # Ensure the rest of the rows are fully permuted (not optimal, but good enough)
-        nrs = deepcopy(not_rows)
-        nrs = np.random.permutation(nrs)
-        while np.any(nrs == not_rows):
-            nrs = np.random.permutation(nrs)
-        nsort[not_rows] = nrs
-        nsort = torch.tensor(nsort)
-
-        # Apply permutation to weights
-        received_weights[lkeys[self.layer_idx]] = received_weights[lkeys[self.layer_idx]][nsort]
-        received_weights[lkeys[self.layer_idx + 1]] = received_weights[lkeys[self.layer_idx + 1]][nsort]
-        if self.layer_idx + 2 < len(lkeys):
-            received_weights[lkeys[self.layer_idx + 2]] = received_weights[lkeys[self.layer_idx + 2]][:, nsort]
-        return received_weights
-
-
-class DelayerAttack(Attack):
-    """
-    Function to perform delayer attack on the received weights. It delays the
-    weights for an indefinite number of rounds.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.weights = None
-
-    def attack(self, received_weights):
-        logging.info("[DelayerAttack] Performing delayer attack")
-        if self.weights is None:
-            self.weights = deepcopy(received_weights)
-        return self.weights
+    # If the attack is found, return an instance of the attack class
+    if attack:
+        return attack(engine, dict(attack_params))
+    else:
+        # If the attack name is not found, raise an exception
+        raise AttackException(f"Attack {attack_name} not found")
