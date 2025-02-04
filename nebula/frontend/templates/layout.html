@@ -122,7 +122,14 @@
                     </li>
                     <li><a class="nav-link scrollto" href="https://github.com/CyberDataLab/nebula">Source Code</a>
                     </li>
-                    <li><a class="nav-link scrollto" href="https://nebula.enriquetomasmb.com/">Documentation</a></li>
+                    <li class="dropdown">
+                        <a href="#" class="nav-link dropdown-toggle">Documentation</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="nav-link scrollto" href="https://nebula.enriquetomasmb.com/installation">Installation Guide</a></li>
+                            <li><a class="nav-link scrollto" href="https://nebula.enriquetomasmb.com/userguide">User Guide</a></li>
+                            <li><a class="nav-link scrollto" href="https://nebula.enriquetomasmb.com/developerguide">Developer Guide</a></li>
+                        </ul>
+                    </li>
                     <li><a class="nav-link scrollto" href="https://federatedlearning.inf.um.es">Website</a></li>
                     {% if not request.session.get("user", None) %}
                     <li class="nav-item dropdown">

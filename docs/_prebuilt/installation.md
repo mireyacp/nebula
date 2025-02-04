@@ -1,136 +1,114 @@
-# Installation
+# **Installation**
 
-In this section, we will explain how to install the NEBULA platform.
+Welcome to the NEBULA platform installation guide. This document explains how to obtain, install, run, and troubleshoot NEBULA.
 
-## Table of contents
+## **Prerequisites**
 
--   [Prerequisites](#prerequisites)
--   [Obtaining NEBULA platform](#obtaining-nebula-platform)
--   [Installing NEBULA platform](#installing-nebula-platform)
--   [Checking the installation](#checking-the-installation)
--   [Building NEBULA core](#building-nebula-core)
--   [Running NEBULA](#running-nebula)
--   [NEBULA Frontend](#nebula-frontend)
--   [Stop NEBULA](#stop-nebula)
--   [Possible issues during the installation or execution](#possible-issues-during-the-installation-or-execution)
+For the best experience, ensure the following prerequisites are met:
 
-## Prerequisites
+- **Linux** (Ubuntu 20.04 LTS recommended) or **macOS** (10.15 Catalina or later). Currently, we do not maintain an up-to-date version for Windows.
+- Minimum **8 GB RAM** (+32 GB recommended for virtualized devices).
+- Minimum **20 GB disk space** for Docker images and containers. Additional space is required for datasets, models, and results.
+- **Docker Engine** 24.0.4 or higher (24.0.7 recommended, https://docs.docker.com/engine/install/)
+- **Docker Compose** 2.19.0 or higher (2.19.1 recommended, https://docs.docker.com/compose/install/)
 
--   Python 3.10 or higher (3.11 recommended)
--   Docker Engine 24.0.4 or higher (24.0.7 recommended, https://docs.docker.com/engine/install/)
--   Docker Compose 2.19.0 or higher (2.19.1 recommended, https://docs.docker.com/compose/install/)
--   For using NVIDIA GPUs, NVIDIA driver version >=525.60.13 (Linux) >=528.33 (Windows), and CUDA 12.1 (mandatory). More information in https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html (Windows) or https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html (Linux)
-
-## Obtaining NEBULA platform
-
+## **Obtaining NEBULA**
 
 You can obtain the source code from https://github.com/CyberDataLab/nebula
 
-Or, if you happen to have git configured, you can clone the repository:
+Or clone the repository using git:
 
-    git clone https://github.com/CyberDataLab/nebula.git
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">git clone https://github.com/CyberDataLab/nebula.git</span></code></pre>
 
 Now, you can move to the source directory:
 
-    cd nebula
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">cd nebula</span></code></pre> 
 
-### Installing NEBULA platform
+### **Installing NEBULA**
 
-To install the NEBULA platform, you can use the following command line:
+Install required dependencies and set up Docker containers by running:
 
-    make install
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">make install</span></code></pre> 
 
-This command will install the required dependencies for the platform and open a shell to start the platform.
+Next, activate the virtual environment:
 
-If the shell is not opened or you want to reopen the shell, you can use the following command line:
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">source .venv/bin/activate</span></code></pre> 
 
-    make shell
+If you forget this command, you can type:
 
-### Checking the installation
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">make shell</span></code></pre>
 
-Once the installation is finished, you can check by listing the version
-of the NEBULA with the following command line:
+Your shell prompt should look similar to:
 
-    python app/main.py --version
+<pre><code><span style="color: grey;">(nebula-dfl)</span> <span style="color: blue;">user@host</span>:~$</code></pre>
 
-## Building NEBULA core
+### **Using NVIDIA GPU on Nodes (Optional)**
 
-There are two ways to deploy the node in the federation: using Docker
-containers or isolated processes. You can choose the one that best fits
-your needs in the frontend.
+For nodes equipped with **NVIDIA GPUs**, ensure the following prerequisites:
 
-### 1. Using Docker containers
+- **NVIDIA Driver**: Version 525.60.13 or later.
+- **CUDA**: Version 12.1 is required. After installation, verify with <code>nvidia-smi</code>.
+- **NVIDIA Container Toolkit**: Install to enable GPU access within Docker containers.
 
-You need to build the docker image using the following command line in
-the root directory:
+Follow these guides for proper installation:
 
-    docker build -t nebula-core .
+- [CUDA Installation Guide for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)
+- [NVIDIA Container Toolkit Installation Guide](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
 
-In case of using GPU in the docker, you have to follow the instructions
-in the following link to install nvidia-container-toolkit:
+Note: Ensure that the CUDA toolkit version is compatible with your driver and, if needed, update the Docker runtime to support GPU integration.
 
-https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+## **Running NEBULA**
 
-You can check the docker images using the following command line:
+Once the installation is finished, you can check if NEBULA is installed properly using:
 
-    docker images
-
-### 2. Using isolated processes
-
-There is no need additional steps to build the core using isolated processes.
-
-## Running NEBULA
+<pre><code><span style="color: grey;">(nebula-dfl) </span><span style="color: blue;">user@host</span>:~$ <span style="color: green;">python app/main.py --version</span></code></pre>
 
 To run NEBULA, you can use the following command line:
 
-    python app/main.py [PARAMS]
+<pre><code><span style="color: grey;">(nebula-dfl)</span> <span style="color: blue;">user@host</span>:~$ <span style="color: green;">python app/main.py</span></code></pre>
 
-The first time you run the platform, the nebula-frontend docker image
-will be built. This process can take a few minutes.
+Note: The first run may build the nebula-frontend Docker image, which can take a few minutes.
 
-You can show the PARAMS using:
+Display available parameters:
 
-    python app/main.py --help
+<pre><code><span style="color: grey;">(nebula-dfl)</span> <span style="color: blue;">user@host</span>:~$ <span style="color: green;">python app/main.py --help</span></code></pre>
 
-The frontend will be available at http://127.0.0.1:6060 (by default)
+By default, the frontend is available at http://127.0.0.1:6060. If the 6060 port is unavailable, a random port will be assigned automatically and prompted in the console.
 
-To change the default port of the frontend, you can use the following
-command line:
+Also, you can define the specific port using the following command line:
 
-    python app/main.py --webport [PORT]
+<pre><code><span style="color: grey;">(nebula-dfl)</span> <span style="color: blue;">user@host</span>:~$ <span style="color: green;">python app/main.py --webport [PORT]</span></code></pre>
 
-To change the default port of the statistics endpoint, you can use the
-following command line:
+and the default port of the statistics endpoint:
 
-    python app/main.py --statsport [PORT]
+<pre><code><span style="color: grey;">(nebula-dfl)</span> <span style="color: blue;">user@host</span>:~$ <span style="color: green;">python app/main.py --statsport [PORT]</span></code></pre>
 
-## NEBULA Frontend
+## **NEBULA Frontend Credentials**
 
-You can login with the following credentials:
+You can log in with the default credentials:
 
     - User: admin
     - Password: admin
 
-If not working the default credentials, send an email to [Enrique Tomás
-Martínez Beltrán](mailto:enriquetomas@um.es) to get the credentials.
+If these do not work, please contact Enrique Tomás Martínez Beltrán at [enriquetomas@um.es](mailto:enriquetomas@um.es).
 
-## Stop NEBULA
+## **Stopping NEBULA**
 
 To stop NEBULA, you can use the following command line:
 
-    python app/main.py --stop
+<pre><code><span style="color: grey;">(nebula-dfl)</span> <span style="color: blue;">user@host</span>:~$ <span style="color: green;">python app/main.py --stop</span></code></pre>
 
-Be careful, this command will stop all the containers related to NEBULA:
-frontend, controller, and nodes.
+Be careful! This command will stop all the containers related to NEBULA:
+Frontend, Controller, and Nodes.
 
-## Possible issues during the installation or execution
+## **Troubleshooting**
 
 If frontend is not working, check the logs in app/logs/frontend.log
 
 If any of the following errors appear, take a look at the docker logs of
 the nebula-frontend container:
 
-docker logs nebula-frontend
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">docker logs user_nebula-frontend</span></code></pre>
 
 ------------------------------------------------------------------------
 
@@ -139,7 +117,7 @@ from daemon: Pool overlaps with other one on this address space
 
 Solution: Delete the docker network nebula_X
 
-> docker network rm nebula_X
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">docker network rm nebula_X</span></code></pre>
 
 ------------------------------------------------------------------------
 
@@ -148,7 +126,7 @@ unix:///var/run/docker.sock. Is the docker daemon running?
 
 Solution: Start the docker daemon
 
-> sudo dockerd
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">sudo dockerdX</span></code></pre>
 
 Solution: Enable the following option in Docker Desktop
 
@@ -163,13 +141,13 @@ docker daemon running?
 
 Solution: Start the docker daemon
 
-> sudo dockerd -H tcp://X.X.X.X:2375
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">sudo dockerd -H tcp://X.X.X.X:2375</span></code></pre>
 
 ------------------------------------------------------------------------
 
 If frontend is not working, restart docker daemon
 
-> sudo systemctl restart docker
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">sudo systemctl restart docker</span></code></pre>
 
 ------------------------------------------------------------------------
 

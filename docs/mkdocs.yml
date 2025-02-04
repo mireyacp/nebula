@@ -11,7 +11,8 @@ copyright: Created by <a href="https://enriquetomasmb.com">Enrique Tomás Martí
 nav:
   - Home: index.md
   - Installation: installation.md
-  - Usage: usage.md
+  - User Guide: userguide.md
+  - Developer Guide: developerguide.md
   - API Reference: api/
   - Contributing: contributing.md
   - Changelog: changelog.md
@@ -80,6 +81,12 @@ extra:
     - name: robots
       content: "index, follow"
   generator: false
+
+extra_css:
+  - css/toc.css 
+
+extra_javascript:
+  - js/toc.js
 
 markdown_extensions:
   - toc:
