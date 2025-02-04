@@ -995,6 +995,15 @@
     {% endif %}
 
     <script>
+        var deploymentRadioOptions = document.getElementsByName("deploymentRadioOptions");
+        for (var i = 0; i < deploymentRadioOptions.length; i++) {
+            deploymentRadioOptions[i].addEventListener("change", function () {
+                updateGraph();
+            });
+        }
+    </script>
+
+    <script>
         // Check values of datasetSelect and then show the models available for that dataset in modelSelect
         var datasets = {
             "MNIST": ["MLP", "CNN"],
