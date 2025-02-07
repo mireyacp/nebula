@@ -225,7 +225,7 @@ class TopologyManager:
         if self.b_fully_connected:
             self.__fully_connected()
             return
-        
+
         if self.topology is not None and len(self.topology) > 0:
             # Topology was already provided
             return
@@ -284,7 +284,7 @@ class TopologyManager:
             None: The method modifies the internal `self.topology` to the provided custom topology.
         """
         self.topology = topology
-    
+
     def generate_random_topology(self, probability):
         """
         Generates a random topology using Erdos-Renyi model with given probability.

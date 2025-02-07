@@ -1,6 +1,7 @@
-from abc import abstractmethod
 import logging
 import types
+from abc import abstractmethod
+
 from nebula.addons.attacks.attacks import Attack
 
 
@@ -26,9 +27,9 @@ class CommunicationAttack(Attack):
     async def _inject_malicious_behaviour(self):
         """Inject malicious behavior into the target method."""
         logging.info("Injecting malicious behavior")
-        
+
         decorated_method = self.decorator(self.decorator_args)(self.original_method)
-        
+
         setattr(
             self.target_class,
             self.target_method,
@@ -48,4 +49,3 @@ class CommunicationAttack(Attack):
         elif self.engine.round == self.round_start_attack:
             logging.info(f"[{self.__class__.__name__}] Injecting malicious behavior")
             await self._inject_malicious_behaviour()
-        

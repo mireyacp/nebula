@@ -45,12 +45,12 @@ This section explains the structure of the frontend and provides instructions on
         start_services.sh
     ```
 
-The frontend is organized within the `frontend/` directory. Key files and folders include:  
+The frontend is organized within the `frontend/` directory. Key files and folders include:
 
 - `config/` → Contains the **participant.json.example**, the default structure for the paramteres passed to each participant.
-- `databases/` → Contains the different databases for NEBULA   
-- `static/` → Holds static assets (CSS, images, JS, etc.).  
-- `templates/` → Contains HTML templates. Focus on **deployment.html** 
+- `databases/` → Contains the different databases for NEBULA
+- `static/` → Holds static assets (CSS, images, JS, etc.).
+- `templates/` → Contains HTML templates. Focus on **deployment.html**
 
 ### **Adding a New Parameter**
 
@@ -119,7 +119,7 @@ To implement a new attack type, first locate the section where attacks are defin
             </h5>
             <div class="form-check form-check-inline" style="display: none;" id="new-parameter-container">
                 <input type="number" class="form-control" id="new-parameter-value"
-                    placeholder="new parameter value" min="0" value="0"> 
+                    placeholder="new parameter value" min="0" value="0">
             </div>
         </div>
     </div>
@@ -204,43 +204,43 @@ To view the documentation of functions in more detail, you must go to the **NEBU
       utils.py
     ```
 
-The backend is organized within the `/nebula/` directory. Key files and folders include:  
+The backend is organized within the `/nebula/` directory. Key files and folders include:
 
 **Addons/**
 
 The `addons/` directory contains extended functionalities that can be integrated into the core system.
 
-- **`attacks/`** → Simulates attacks, primarily for security purposes, including adversarial attacks in machine learning.  
-- **`blockchain/`** → Integrates blockchain technology, potentially for decentralized storage or security enhancements.  
-- **`trustworthiness/`** → Evaluates the trustworthiness and reliability of participants, focusing on security and ethical considerations.  
-- **`waf/`** → Implements a Web Application Firewall (WAF) to filter and monitor HTTP traffic for potential threats.  
+- **`attacks/`** → Simulates attacks, primarily for security purposes, including adversarial attacks in machine learning.
+- **`blockchain/`** → Integrates blockchain technology, potentially for decentralized storage or security enhancements.
+- **`trustworthiness/`** → Evaluates the trustworthiness and reliability of participants, focusing on security and ethical considerations.
+- **`waf/`** → Implements a Web Application Firewall (WAF) to filter and monitor HTTP traffic for potential threats.
 
-**Core/**  
+**Core/**
 
 The `core/` directory contains the essential components for the backend operation.
 
-- **`aggregation/`** → Manages the aggregation of data from different nodes.  
-- **`datasets/`** → Handles dataset management, including loading and preprocessing data.  
-- **`models/`** → Defines machine learning model architectures and related functionalities, such as training and evaluation.  
-- **`network/`** → Manages communication between participants in a distributed system.  
-- **`pb/`** → Implements Protocol Buffers (PB) for efficient data serialization and communication.  
-- **`training/`** → Contains the logic for model training, optimization, and evaluation.  
-- **`utils/`** → Provides utility functions for file handling, logging, and common tasks.  
+- **`aggregation/`** → Manages the aggregation of data from different nodes.
+- **`datasets/`** → Handles dataset management, including loading and preprocessing data.
+- **`models/`** → Defines machine learning model architectures and related functionalities, such as training and evaluation.
+- **`network/`** → Manages communication between participants in a distributed system.
+- **`pb/`** → Implements Protocol Buffers (PB) for efficient data serialization and communication.
+- **`training/`** → Contains the logic for model training, optimization, and evaluation.
+- **`utils/`** → Provides utility functions for file handling, logging, and common tasks.
 
-**Files**  
+**Files**
 
-- **`engine.py`** → The main engine orchestrating participant communications, training, and overall behavior.  
-- **`eventmanager.py`** → Handles event management, logging, and notifications within the system.  
-- **`role.py`** → Defines participant roles and their interactions.  
+- **`engine.py`** → The main engine orchestrating participant communications, training, and overall behavior.
+- **`eventmanager.py`** → Handles event management, logging, and notifications within the system.
+- **`role.py`** → Defines participant roles and their interactions.
 
-**Standalone Scripts**  
+**Standalone Scripts**
 
 These scripts act as entry points or controllers for various backend functionalities.
 
-- **`controller.py`** → Manages the flow of operations, coordinating tasks and interactions.  
-- **`participant.py`** → Represents a participant in the decentralized network, handling computations and communication.  
-- **`scenarios.py`** → Defines different simulation scenarios for testing and running participants under specific conditions.  
-- **`utils.py`** → Contains helper functions that simplify development and maintenance.  
+- **`controller.py`** → Manages the flow of operations, coordinating tasks and interactions.
+- **`participant.py`** → Represents a participant in the decentralized network, handling computations and communication.
+- **`scenarios.py`** → Defines different simulation scenarios for testing and running participants under specific conditions.
+- **`utils.py`** → Contains helper functions that simplify development and maintenance.
 
 
 ### **Adding new Datasets**
@@ -371,7 +371,7 @@ If you want to import a dataset, you must first create a folder named **data** w
         # self._load_data(self.path_to_data)
 
         mode = "train" if self.is_train else "test"
-        self.image_list = glob.glob(os.path.join(self.path_to_data, f"{self.name}/{mode}/*/*.npy")) 
+        self.image_list = glob.glob(os.path.join(self.path_to_data, f"{self.name}/{mode}/*/*.npy"))
         self.label_list = glob.glob(os.path.join(self.path_to_data, f"{self.name}/{mode}/*/*.json"))
         self.image_list = sorted(self.image_list, key=os.path.basename)
         self.label_list = sorted(self.label_list, key=os.path.basename)
@@ -424,7 +424,7 @@ Then you must create a **MilitarySARDataset** class in order to use it, as shown
 
 #### Define transforms
 
-You can apply transformations like cropping and normalization using `torchvision.transforms`. 
+You can apply transformations like cropping and normalization using `torchvision.transforms`.
 
 For example, the **MilitarySAR** dataset uses **RandomCrop** for training and **CenterCrop** for testing.
 
@@ -483,7 +483,7 @@ For example, the **MilitarySAR** dataset uses **RandomCrop** for training and **
             apply_transforms = [CenterCrop(88), transforms.ToTensor()]
             if train:
                 apply_transforms = [RandomCrop(88), transforms.ToTensor()]
-    
+
             return MilitarySAR(name="soc", is_train=train, transform=transforms.Compose(apply_transforms))
     ```
 

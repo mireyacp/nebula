@@ -101,6 +101,19 @@
             }
         });
     </script>
+    <script>
+        // Check if WebSocket is supported by the browser
+        if ("WebSocket" in window) {
+            console.log("WebSocket is supported by your Browser!");
+        } else {
+            console.log("WebSocket NOT supported by your Browser!");
+        }
+        var client_id = Math.floor(Math.random() * 1000000);
+        var host = window.location.hostname;
+        var port = window.location.port ? ':' + window.location.port : '';
+        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        var socket = new WebSocket(protocol + '//' + host + port + '/nebula/ws/' + client_id);
+    </script>
 </head>
 
 <body>
@@ -253,21 +266,7 @@
     </script>
 
     <script>
-        // Check if WebSocket is supported by the browser
-        if ("WebSocket" in window) {
-            console.log("WebSocket is supported by your Browser!");
-        } else {
-            console.log("WebSocket NOT supported by your Browser!");
-        }
-        var client_id = Math.floor(Math.random() * 1000000);
-        var host = window.location.hostname;
-        var port = window.location.port ? ':' + window.location.port : '';
-        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        var socket = new WebSocket(protocol + '//' + host + port + '/nebula/ws/' + client_id);
-    </script>
-
-    <script>
-        socket.onmessage = function (event) {
+        socket.addEventListener("message", function (event) {
             try {
                 var data = JSON.parse(event.data);
             } catch (e) {
@@ -277,7 +276,7 @@
             if (data.type === "exceed_resources") {
                 showAlert("danger", "Scenario of user " + data.user + " stopped due to limited resources")
             }
-        }
+        });
     </script>
 
     <script src="{{ url_for('static', path='js/custom.js') }}"></script>

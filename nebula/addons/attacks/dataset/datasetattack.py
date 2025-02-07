@@ -1,5 +1,5 @@
-from abc import abstractmethod
 import logging
+from abc import abstractmethod
 
 from nebula.addons.attacks.attacks import Attack
 
@@ -12,6 +12,7 @@ class DatasetAttack(Attack):
     This attack modifies the dataset used by the engine's trainer to introduce malicious
     data, potentially impacting the model's training process.
     """
+
     def __init__(self, engine):
         """
         Initializes the DatasetAttack with the given engine.

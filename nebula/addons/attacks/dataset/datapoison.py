@@ -19,15 +19,16 @@ from skimage.util import random_noise
 
 from nebula.addons.attacks.dataset.datasetattack import DatasetAttack
 
+
 class SamplePoisoningAttack(DatasetAttack):
     """
     Implements a data poisoning attack on a training dataset.
 
-    This attack introduces noise or modifies specific data points to influence 
+    This attack introduces noise or modifies specific data points to influence
     the behavior of a machine learning model.
 
     Args:
-        engine (object): The training engine object, including the associated 
+        engine (object): The training engine object, including the associated
                          datamodule.
         attack_params (dict): Attack parameters including:
             - poisoned_percent (float): The percentage of data points to be poisoned.
@@ -36,6 +37,7 @@ class SamplePoisoningAttack(DatasetAttack):
             - target_label (int): The target label for the attack (used if targeted is True).
             - noise_type (str): The type of noise to introduce during the attack.
     """
+
     def __init__(self, engine, attack_params):
         """
         Initializes the SamplePoisoningAttack with the specified engine and parameters.
@@ -53,7 +55,6 @@ class SamplePoisoningAttack(DatasetAttack):
         self.noise_type = attack_params["noise_type"]
         self.round_start_attack = int(attack_params["round_start_attack"])
         self.round_stop_attack = int(attack_params["round_stop_attack"])
-
 
     def apply_noise(self, t, noise_type, poisoned_ratio):
         """
@@ -91,17 +92,16 @@ class SamplePoisoningAttack(DatasetAttack):
         else:
             print("ERROR: poison attack type not supported.")
             return t
-        
 
     def datapoison(
-    self,
-    dataset,
-    indices,
-    poisoned_percent,
-    poisoned_ratio,
-    targeted=False,
-    target_label=3,
-    noise_type="salt",
+        self,
+        dataset,
+        indices,
+        poisoned_percent,
+        poisoned_ratio,
+        targeted=False,
+        target_label=3,
+        noise_type="salt",
     ):
         """
         Adds noise to a specified portion of a dataset for data poisoning purposes.
@@ -152,7 +152,7 @@ class SamplePoisoningAttack(DatasetAttack):
 
             for i in poisoned_indice:
                 t = train_data[i]
-                poisoned =  self.apply_noise(t, noise_type, poisoned_ratio)
+                poisoned = self.apply_noise(t, noise_type, poisoned_ratio)
                 train_data[i] = poisoned
         else:
             for i in indices:
@@ -162,7 +162,6 @@ class SamplePoisoningAttack(DatasetAttack):
                     train_data[i] = poisoned
         new_dataset.data = train_data
         return new_dataset
-
 
     def add_x_to_image(self, img):
         """
@@ -186,7 +185,6 @@ class SamplePoisoningAttack(DatasetAttack):
                 if i + j <= 9 or i == j:
                     img[i][j] = 255
         return torch.tensor(img)
-
 
     def poison_to_nlp_rawdata(self, text_data, poisoned_ratio):
         """
@@ -229,7 +227,6 @@ class SamplePoisoningAttack(DatasetAttack):
             text_data[i] = zero_vector
         return text_data
 
-
     def get_malicious_dataset(self):
         """
         Generates a poisoned dataset based on the specified parameters.
@@ -244,6 +241,5 @@ class SamplePoisoningAttack(DatasetAttack):
             self.poisoned_ratio,
             self.targeted,
             self.target_label,
-            self.noise_type
+            self.noise_type,
         )
-

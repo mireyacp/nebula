@@ -1,5 +1,7 @@
 import logging
+
 import torch
+
 from nebula.addons.attacks.model.modelattack import ModelAttack
 
 
@@ -7,7 +9,7 @@ class NoiseInjectionAttack(ModelAttack):
     """
     Implements a noise injection attack on the received model weights.
 
-    This attack introduces noise into the model weights by adding random values 
+    This attack introduces noise into the model weights by adding random values
     scaled by a specified strength, potentially disrupting the model’s behavior.
 
     Args:
@@ -15,6 +17,7 @@ class NoiseInjectionAttack(ModelAttack):
         attack_params (dict): Parameters for the attack, including:
             - strength (int): The strength of the noise to be injected into the weights.
     """
+
     def __init__(self, engine, attack_params):
         """
         Initializes the NoiseInjectionAttack with the specified engine and parameters.
@@ -32,7 +35,7 @@ class NoiseInjectionAttack(ModelAttack):
         """
         Performs the noise injection attack by adding random noise to the model weights.
 
-        The noise is generated from a normal distribution and scaled by the 
+        The noise is generated from a normal distribution and scaled by the
         specified strength, modifying each layer's weights in the model.
 
         Args:

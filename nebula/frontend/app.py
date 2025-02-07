@@ -168,9 +168,7 @@ class ConnectionManager:
 
     def add_message(self, message):
         current_timestamp = datetime.datetime.fromtimestamp(time.time()).strftime("%Y-%m-%d %H:%M:%S")
-        self.historic_messages.update({
-            current_timestamp : json.loads(message)
-        })
+        self.historic_messages.update({current_timestamp: json.loads(message)})
 
     async def send_personal_message(self, message: str, websocket: WebSocket):
         await websocket.send_text(message)
@@ -179,7 +177,7 @@ class ConnectionManager:
         self.add_message(message)
         for connection in self.active_connections:
             await connection.send_text(message)
-            
+
     def get_historic(self):
         return self.historic_messages
 
@@ -298,10 +296,11 @@ async def nebula_ws_historic(session: dict = Depends(get_session)):
     if session.get("role") == "admin":
         historic = manager.get_historic()
         if historic:
-            pretty_historic = historic 
+            pretty_historic = historic
             return JSONResponse(content=pretty_historic)
         else:
             return JSONResponse({"status": "error", "message": "Historic not found"})
+
 
 @app.get("/nebula/dashboard/{scenario_name}/private", response_class=HTMLResponse)
 async def nebula_dashboard_private(request: Request, scenario_name: str, session: dict = Depends(get_session)):
@@ -1405,8 +1404,10 @@ async def nebula_dashboard_deployment_run(
 ):
     enough_resources = await check_enough_resources()
 
-    if not enough_resources or "user" not in session or session["role"] in ["demo"] and get_running_scenario():
-        raise HTTPException(status_code=401)
+    if "user" not in session:
+        raise HTTPException(status_code=401, detail="Login in to deploy scenarios")
+    elif not enough_resources:
+        raise HTTPException(status_code=503, detail="Not enough resources to run a scenario")
 
     if request.headers.get("content-type") != "application/json":
         raise HTTPException(status_code=401)

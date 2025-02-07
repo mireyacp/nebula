@@ -742,7 +742,7 @@
 <script type="text/javascript">
     var scenario_name = document.getElementById('scenario_name').innerHTML;
 
-    socket.onmessage = function (event) {
+    socket.addEventListener("message", function (event) {
         console.log("--> [!] Received message from WebSocket");
         console.log(event.data);
         try {
@@ -874,7 +874,7 @@
         else {
             console.log("Unknown message type: " + data.type);
         }
-    };
+    });
 </script>
 
 {% endif %}

@@ -2181,12 +2181,21 @@
                     .then(response => {
                         if (response.redirected) {
                             window.location.href = response.url;
-                        } else {
+                        } else if (!response.ok) {
                             document.querySelector(".overlay").style.display = "none";
                             document.getElementById("spinner").style.display = "none";
+
+                            switch(response.status) {
+                                case 401:
+                                    errorMessage = "You are not authorized to run a scenario. Please log in.";
+                                break;
+                                case 503:
+                                    errorMessage = "Not enough resources to run a scenario. Please try again later.";
+                                break;
+                            }
                             // If the user is a demo, show a modal with a message
                             $('#confirm-modal').on('hidden.bs.modal', function () {
-                                $('#info-modal-body').html('You are not authorized to run a scenario. Your access is limited, or you may need to wait until more scenarios can be launched');
+                                $('#info-modal-body').html(errorMessage);
                                 $('#info-modal').modal('show');
                             });
                         }

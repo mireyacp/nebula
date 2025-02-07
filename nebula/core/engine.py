@@ -7,7 +7,7 @@ import docker
 from nebula.addons.attacks.attacks import create_attack
 from nebula.addons.functions import print_msg_box
 from nebula.addons.reporter import Reporter
-from nebula.core.aggregation.aggregator import create_aggregator, create_malicious_aggregator, create_target_aggregator
+from nebula.core.aggregation.aggregator import create_aggregator, create_target_aggregator
 from nebula.core.eventmanager import EventManager, event_handler
 from nebula.core.network.communications import CommunicationsManager
 from nebula.core.pb import nebula_pb2
@@ -594,7 +594,7 @@ class MaliciousNode(Engine):
             await self.attack.attack()
         except:
             attack_name = self.config.participant["adversarial_args"]["attacks"]
-            logging.error(f"Attack {attack_name} failed")
+            logging.exception(f"Attack {attack_name} failed")
 
         if self.role == "aggregator":
             await AggregatorNode._extended_learning_cycle(self)

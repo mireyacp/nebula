@@ -83,7 +83,7 @@ extra:
   generator: false
 
 extra_css:
-  - css/toc.css 
+  - css/toc.css
 
 extra_javascript:
   - js/toc.js

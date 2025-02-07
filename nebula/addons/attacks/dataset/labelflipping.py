@@ -8,12 +8,12 @@ Function:
 """
 
 import copy
-import logging
 import random
 
 import torch
 
 from nebula.addons.attacks.dataset.datasetattack import DatasetAttack
+
 
 class LabelFlippingAttack(DatasetAttack):
     """
@@ -22,6 +22,7 @@ class LabelFlippingAttack(DatasetAttack):
     This attack alters the labels of certain data points in the training set to
     mislead the training process.
     """
+
     def __init__(self, engine, attack_params):
         """
         Initializes the LabelFlippingAttack with the engine and attack parameters.
@@ -117,9 +118,10 @@ class LabelFlippingAttack(DatasetAttack):
             Dataset: The modified dataset with flipped labels.
         """
         return self.labelFlipping(
-            self.datamodule.train_set, 
-            self.datamodule.train_set_indices, 
-            self.poisoned_percent, 
-            self.targeted, 
-            self.target_label, 
-            self.target_changed_label)
+            self.datamodule.train_set,
+            self.datamodule.train_set_indices,
+            self.poisoned_percent,
+            self.targeted,
+            self.target_label,
+            self.target_changed_label,
+        )

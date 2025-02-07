@@ -1,6 +1,7 @@
 import logging
 
 import torch
+
 from nebula.addons.attacks.model.modelattack import ModelAttack
 
 
@@ -8,14 +9,15 @@ class GLLNeuronInversionAttack(ModelAttack):
     """
     Implements a neuron inversion attack on the received model weights.
 
-    This attack aims to invert the values of neurons in specific layers 
-    by replacing their values with random noise, potentially disrupting the model's 
+    This attack aims to invert the values of neurons in specific layers
+    by replacing their values with random noise, potentially disrupting the model's
     functionality during aggregation.
 
     Args:
         engine (object): The training engine object that manages the aggregator.
         _ (any): A placeholder argument (not used in this class).
     """
+
     def __init__(self, engine, attack_params):
         """
         Initializes the GLLNeuronInversionAttack with the specified engine.
@@ -30,10 +32,10 @@ class GLLNeuronInversionAttack(ModelAttack):
 
     def model_attack(self, received_weights):
         """
-        Performs the neuron inversion attack by modifying the weights of a specific 
+        Performs the neuron inversion attack by modifying the weights of a specific
         layer with random noise.
 
-        This attack replaces the weights of a chosen layer with random values, 
+        This attack replaces the weights of a chosen layer with random values,
         which may disrupt the functionality of the model.
 
         Args:

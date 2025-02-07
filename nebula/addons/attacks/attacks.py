@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
 import importlib
 import logging
+from abc import ABC, abstractmethod
 
 # To take into account:
 # - Malicious nodes do not train on their own data
@@ -23,6 +23,7 @@ class Attack(ABC):
     behaviors and for defining specific attack implementations. Subclasses must
     implement the `attack` and `_inject_malicious_behaviour` methods.
     """
+
     async def _replace_benign_function(function_route: str, malicious_behaviour):
         """
         Dynamically replace a method in a class with a malicious behavior.
@@ -58,7 +59,7 @@ class Attack(ABC):
             setattr(changing_class, function_name, malicious_behaviour)
             print(f"Function '{function_name}' has been replaced with '{malicious_behaviour.__name__}'.")
         except Exception as e:
-            logging.error(f"Error replacing function: {e}")
+            logging.exception(f"Error replacing function: {e}")
 
     @abstractmethod
     async def attack(self):
@@ -97,7 +98,7 @@ def create_attack(engine) -> Attack:
     Creates an attack object based on the attack name specified in the engine configuration.
 
     This function uses a predefined map of available attacks (`ATTACK_MAP`) to instantiate
-    the corresponding attack class based on the attack name in the configuration. The attack 
+    the corresponding attack class based on the attack name in the configuration. The attack
     parameters are also extracted from the configuration and passed when creating the attack object.
 
     Args:
@@ -126,11 +127,11 @@ def create_attack(engine) -> Attack:
         "Sample Poisoning": SamplePoisoningAttack,
         "Model Poisoning": ModelPoisonAttack,
     }
-    
+
     # Get attack name and parameters from the engine configuration
     attack_name = engine.config.participant["adversarial_args"]["attacks"]
     attack_params = engine.config.participant["adversarial_args"].get("attack_params", {}).items()
-    
+
     # Look up the attack class based on the attack name
     attack = ATTACK_MAP.get(attack_name)
 

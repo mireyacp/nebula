@@ -1,23 +1,25 @@
-from abc import abstractmethod
-from functools import wraps
 import logging
 import types
+from abc import abstractmethod
+from functools import wraps
 
 from nebula.addons.attacks.attacks import Attack
 
+
 class ModelAttack(Attack):
     """
-    Base class for implementing model attacks, which modify the behavior of 
+    Base class for implementing model attacks, which modify the behavior of
     model aggregation methods.
 
-    This class defines a decorator for introducing malicious behavior into the 
-    aggregation process and requires subclasses to implement the model-specific 
+    This class defines a decorator for introducing malicious behavior into the
+    aggregation process and requires subclasses to implement the model-specific
     attack logic.
 
     Args:
-        engine (object): The engine object that manages the aggregator for 
+        engine (object): The engine object that manages the aggregator for
                          model aggregation.
     """
+
     def __init__(self, engine):
         """
         Initializes the ModelAttack with the specified engine.
@@ -40,10 +42,11 @@ class ModelAttack(Attack):
             delay (int or float): The time in seconds to delay the method execution.
 
         Returns:
-            function: A decorator function that wraps the target method with 
-                      the delay logic and potentially modifies the aggregation 
+            function: A decorator function that wraps the target method with
+                      the delay logic and potentially modifies the aggregation
                       behavior to inject malicious changes.
         """
+
         # The actual decorator function that will be applied to the target method
         def decorator(func):
             @wraps(func)  # Preserves the metadata of the original function
@@ -56,7 +59,9 @@ class ModelAttack(Attack):
                     accum = self.model_attack(accum)
                     logging.info(f"malicious_aggregate | attack aggregation result={accum}")
                 return accum
+
             return wrapper
+
         return decorator
 
     @abstractmethod
@@ -77,10 +82,10 @@ class ModelAttack(Attack):
 
     async def _inject_malicious_behaviour(self):
         """
-        Modifies the `propagate` method of the aggregator to include the delay 
+        Modifies the `propagate` method of the aggregator to include the delay
         introduced by the decorator.
 
-        This method wraps the original aggregation method with the malicious 
+        This method wraps the original aggregation method with the malicious
         decorator to inject the attack behavior into the aggregation process.
         """
         decorated_aggregation = self.aggregator_decorator()(self.aggregator.run_aggregation)
@@ -94,7 +99,7 @@ class ModelAttack(Attack):
 
     async def attack(self):
         """
-        Initiates the malicious attack by injecting the malicious behavior 
+        Initiates the malicious attack by injecting the malicious behavior
         into the aggregation process.
 
         This method logs the attack and calls the method to modify the aggregator.

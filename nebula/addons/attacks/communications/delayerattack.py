@@ -1,6 +1,7 @@
 import asyncio
-from functools import wraps
 import logging
+from functools import wraps
+
 from nebula.addons.attacks.communications.communicationattack import CommunicationAttack
 
 
@@ -45,6 +46,7 @@ class DelayerAttack(CommunicationAttack):
         Returns:
             function: A decorator function that wraps the target method with the delay logic.
         """
+
         def decorator(func):
             @wraps(func)
             async def wrapper(*args, **kwargs):
@@ -52,5 +54,7 @@ class DelayerAttack(CommunicationAttack):
                 await asyncio.sleep(delay)
                 _, *new_args = args  # Exclude self argument
                 return await func(*new_args)
+
             return wrapper
+
         return decorator

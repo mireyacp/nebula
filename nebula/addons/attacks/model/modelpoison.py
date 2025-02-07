@@ -9,20 +9,21 @@ Function:
   and type of noise (e.g., Gaussian, salt, salt-and-pepper).
 """
 
-from collections import OrderedDict
 import logging
+from collections import OrderedDict
 
 import torch
 from skimage.util import random_noise
 
 from nebula.addons.attacks.model.modelattack import ModelAttack
 
+
 class ModelPoisonAttack(ModelAttack):
     """
-    Implements a model poisoning attack by modifying the received model weights 
+    Implements a model poisoning attack by modifying the received model weights
     during the aggregation process.
 
-    This attack introduces specific modifications to the model weights to 
+    This attack introduces specific modifications to the model weights to
     influence the global model's behavior.
 
     Args:
@@ -31,6 +32,7 @@ class ModelPoisonAttack(ModelAttack):
             - poisoned_ratio (float): The ratio of model weights to be poisoned.
             - noise_type (str): The type of noise to introduce during the attack.
     """
+
     def __init__(self, engine, attack_params):
         """
         Initializes the ModelPoisonAttack with the specified engine and parameters.
@@ -45,15 +47,14 @@ class ModelPoisonAttack(ModelAttack):
         self.round_start_attack = int(attack_params["round_start_attack"])
         self.round_stop_attack = int(attack_params["round_stop_attack"])
 
-
     def modelPoison(self, model: OrderedDict, poisoned_ratio, noise_type="gaussian"):
         """
         Adds random noise to the parameters of a model for the purpose of data poisoning.
-    
+
         This function modifies the model's parameters by injecting noise according to the specified
         noise type and ratio. Various types of noise can be applied, including salt noise, Gaussian
         noise, and salt-and-pepper noise.
-    
+
         Args:
             model (OrderedDict): The model's parameters organized as an `OrderedDict`. Each key corresponds
                                  to a layer, and each value is a tensor representing the parameters of that layer.
@@ -63,13 +64,13 @@ class ModelPoisonAttack(ModelAttack):
                                         - "gaussian": Applies Gaussian-distributed additive noise.
                                         - "s&p": Applies salt-and-pepper noise, replacing random elements with either 1 or low_val.
                                         Default is "gaussian".
-    
+
         Returns:
             OrderedDict: A new `OrderedDict` containing the model parameters with noise added.
-    
+
         Raises:
             ValueError: If `poisoned_ratio` is not between 0 and 1, or if `noise_type` is unsupported.
-    
+
         Notes:
             - If a layer's tensor is a single point (0-dimensional), it will be reshaped for processing.
             - Unsupported noise types will result in an error message, and the original tensor will be retained.
@@ -77,7 +78,7 @@ class ModelPoisonAttack(ModelAttack):
         poisoned_model = OrderedDict()
         if not isinstance(noise_type, str):
             noise_type = noise_type[0]
-    
+
         for layer in model:
             bt = model[layer]
             t = bt.detach().clone()
@@ -101,7 +102,7 @@ class ModelPoisonAttack(ModelAttack):
             if single_point:
                 poisoned = poisoned[0]
             poisoned_model[layer] = poisoned
-    
+
         return poisoned_model
 
     def model_attack(self, received_weights):

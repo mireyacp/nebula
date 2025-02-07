@@ -173,7 +173,7 @@ class Scenario:
         poisoned_node_percent,
         poisoned_sample_percent,
         poisoned_noise_percent,
-        attack_params
+        attack_params,
     ):
         """Identify which nodes will be attacked"""
         import math
@@ -314,7 +314,7 @@ class ScenarioManagement:
             int(self.scenario.poisoned_node_percent),
             int(self.scenario.poisoned_sample_percent),
             int(self.scenario.poisoned_noise_percent),
-            self.scenario.attack_params
+            self.scenario.attack_params,
         )
 
         if self.scenario.mobility:
@@ -570,11 +570,13 @@ class ScenarioManagement:
 
     def create_topology(self, matrix=None):
         import numpy as np
-        
+
         if self.scenario.topology == "Random":
             # Create network topology using topology manager (random)
             probability = float(self.scenario.random_topology_probability)
-            logging.info(f"Creating random network topology using erdos_renyi_graph: nodes={self.n_nodes}, probability={probability}")
+            logging.info(
+                f"Creating random network topology using erdos_renyi_graph: nodes={self.n_nodes}, probability={probability}"
+            )
             topologymanager = TopologyManager(
                 scenario_name=self.scenario_name,
                 n_nodes=self.n_nodes,

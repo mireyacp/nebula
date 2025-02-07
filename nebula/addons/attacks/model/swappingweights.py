@@ -3,18 +3,19 @@ import logging
 
 import numpy as np
 import torch
-from nebula.addons.attacks.model.modelattack import ModelAttack
 from torchmetrics.functional import pairwise_cosine_similarity
+
+from nebula.addons.attacks.model.modelattack import ModelAttack
 
 
 class SwappingWeightsAttack(ModelAttack):
     """
     Implements a swapping weights attack on the received model weights.
 
-    This attack performs stochastic swapping of weights in a specified layer of the model, 
-    potentially disrupting its performance. The attack is not deterministic, and its performance 
-    can vary. The code may not work as expected for some layers due to reshaping, and its 
-    computational cost scales quadratically with the layer size. It should not be applied to 
+    This attack performs stochastic swapping of weights in a specified layer of the model,
+    potentially disrupting its performance. The attack is not deterministic, and its performance
+    can vary. The code may not work as expected for some layers due to reshaping, and its
+    computational cost scales quadratically with the layer size. It should not be applied to
     the last layer, as it would make the attack detectable due to high loss on the malicious node.
 
     Args:
@@ -22,6 +23,7 @@ class SwappingWeightsAttack(ModelAttack):
         attack_params (dict): Parameters for the attack, including:
             - layer_idx (int): The index of the layer where the weights will be swapped.
     """
+
     def __init__(self, engine, attack_params):
         """
         Initializes the SwappingWeightsAttack with the specified engine and parameters.
@@ -37,12 +39,12 @@ class SwappingWeightsAttack(ModelAttack):
 
     def model_attack(self, received_weights):
         """
-        Performs the swapping weights attack by computing a similarity matrix and 
+        Performs the swapping weights attack by computing a similarity matrix and
         swapping the weights of a specified layer based on their similarity.
 
-        This method applies a greedy algorithm to swap weights in the selected layer 
-        in a way that could potentially disrupt the training process. The attack also 
-        ensures that some rows are fully permuted, and others are swapped based on 
+        This method applies a greedy algorithm to swap weights in the selected layer
+        in a way that could potentially disrupt the training process. The attack also
+        ensures that some rows are fully permuted, and others are swapped based on
         similarity.
 
         Args:
@@ -83,5 +85,5 @@ class SwappingWeightsAttack(ModelAttack):
         received_weights[lkeys[self.layer_idx + 1]] = received_weights[lkeys[self.layer_idx + 1]][nsort]
         if self.layer_idx + 2 < len(lkeys):
             received_weights[lkeys[self.layer_idx + 2]] = received_weights[lkeys[self.layer_idx + 2]][:, nsort]
-        
+
         return received_weights

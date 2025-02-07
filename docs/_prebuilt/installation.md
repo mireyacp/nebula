@@ -22,17 +22,17 @@ Or clone the repository using git:
 
 Now, you can move to the source directory:
 
-<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">cd nebula</span></code></pre> 
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">cd nebula</span></code></pre>
 
 ### **Installing NEBULA**
 
 Install required dependencies and set up Docker containers by running:
 
-<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">make install</span></code></pre> 
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">make install</span></code></pre>
 
 Next, activate the virtual environment:
 
-<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">source .venv/bin/activate</span></code></pre> 
+<pre><code><span style="color: blue;">user@host</span>:~$ <span style="color: green;">source .venv/bin/activate</span></code></pre>
 
 If you forget this command, you can type:
 
