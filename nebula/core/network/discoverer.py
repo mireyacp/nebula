@@ -3,7 +3,6 @@ import logging
 from typing import TYPE_CHECKING
 
 from nebula.addons.functions import print_msg_box
-from nebula.core.pb import nebula_pb2
 
 if TYPE_CHECKING:
     from nebula.core.network.communications import CommunicationsManager
@@ -31,11 +30,12 @@ class Discoverer:
             if len(self.cm.connections) > 0:
                 latitude = self.config.participant["mobility_args"]["latitude"]
                 longitude = self.config.participant["mobility_args"]["longitude"]
-                message = self.cm.mm.generate_discovery_message(
-                    action=nebula_pb2.DiscoveryMessage.Action.DISCOVER,
-                    latitude=latitude,
-                    longitude=longitude,
-                )
+                # message = self.cm.mm.generate_discovery_message(
+                #     action=nebula_pb2.DiscoveryMessage.Action.DISCOVER,
+                #     latitude=latitude,
+                #     longitude=longitude,
+                # )
+                message = self.cm.create_message("discovery", "discover", latitude=latitude, longitude=longitude)
                 try:
                     logging.debug("🔍  Sending discovery message to neighbors...")
                     current_connections = await self.cm.get_addrs_current_connections(only_direct=True)

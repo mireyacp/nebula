@@ -1,6 +1,5 @@
 import asyncio
 import collections
-import hashlib
 import logging
 import os
 import subprocess
@@ -17,7 +16,6 @@ from nebula.core.network.discoverer import Discoverer
 from nebula.core.network.forwarder import Forwarder
 from nebula.core.network.messages import MessagesManager
 from nebula.core.network.propagator import Propagator
-from nebula.core.pb import nebula_pb2
 from nebula.core.utils.helper import (
     cosine_metric,
     euclidean_metric,
@@ -121,75 +119,20 @@ class CommunicationsManager:
     async def add_ready_connection(self, addr):
         self.ready_connections.add(addr)
 
+    def get_messages_events(self):
+        return self.mm.get_messages_events()
+
+    # def stop_logging(self):
+    #     logging.getLogger().disabled = True
+
     async def handle_incoming_message(self, data, addr_from):
-        try:
-            message_wrapper = nebula_pb2.Wrapper()
-            message_wrapper.ParseFromString(data)
-            source = message_wrapper.source
-            logging.debug(f"📥  handle_incoming_message | Received message from {addr_from} with source {source}")
-            if source == self.addr:
-                return
-            if message_wrapper.HasField("discovery_message"):
-                if await self.include_received_message_hash(hashlib.md5(data).hexdigest()):
-                    await self.forwarder.forward(data, addr_from=addr_from)
-                    await self.handle_discovery_message(source, message_wrapper.discovery_message)
-            elif message_wrapper.HasField("control_message"):
-                await self.handle_control_message(source, message_wrapper.control_message)
-            elif message_wrapper.HasField("federation_message"):
-                if await self.include_received_message_hash(hashlib.md5(data).hexdigest()):
-                    if self.config.participant["device_args"][
-                        "proxy"
-                    ] or message_wrapper.federation_message.action == nebula_pb2.FederationMessage.Action.Value(
-                        "FEDERATION_START"
-                    ):
-                        await self.forwarder.forward(data, addr_from=addr_from)
-                    await self.handle_federation_message(source, message_wrapper.federation_message)
-            elif message_wrapper.HasField("model_message"):
-                if await self.include_received_message_hash(hashlib.md5(data).hexdigest()):
-                    # TODO: Improve the technique. Now only forward model messages if the node is a proxy
-                    # Need to update the expected model messages receiving during the round
-                    # Round -1 is the initialization round --> all nodes should receive the model
-                    if self.config.participant["device_args"]["proxy"] or message_wrapper.model_message.round == -1:
-                        await self.forwarder.forward(data, addr_from=addr_from)
-                    await self.handle_model_message(source, message_wrapper.model_message)
-            elif message_wrapper.HasField("connection_message"):
-                await self.handle_connection_message(source, message_wrapper.connection_message)
-            else:
-                logging.info(f"Unknown handler for message: {message_wrapper}")
-        except Exception as e:
-            logging.exception(f"📥  handle_incoming_message | Error while processing: {e}")
-            logging.exception(traceback.format_exc())
+        await self.mm.process_message(data, addr_from)
 
-    async def handle_discovery_message(self, source, message):
-        logging.info(
-            f"🔍  handle_discovery_message | Received [Action {message.action}] from {source} (network propagation)"
-        )
-        try:
-            await self.engine.event_manager.trigger_event(source, message)
-        except Exception as e:
-            logging.exception(f"🔍  handle_discovery_message | Error while processing: {e}")
+    async def forward_message(self, data, addr_from):
+        await self.forwarder.forward(data, addr_from=addr_from)
 
-    async def handle_control_message(self, source, message):
-        logging.info(
-            f"🔧  handle_control_message | Received [Action {message.action}] from {source} with log {message.log}"
-        )
-        try:
-            await self.engine.event_manager.trigger_event(source, message)
-        except Exception as e:
-            logging.exception(
-                f"🔧  handle_control_message | Error while processing: {message.action} {message.log} | {e}"
-            )
-
-    async def handle_federation_message(self, source, message):
-        logging.info(
-            f"📝  handle_federation_message | Received [Action {message.action}] from {source} with arguments {message.arguments}"
-        )
-        try:
-            await self.engine.event_manager.trigger_event(source, message)
-        except Exception as e:
-            logging.exception(
-                f"📝  handle_federation_message | Error while processing: {message.action} {message.arguments} | {e}"
-            )
+    async def handle_message(self, message_event):
+        await self.engine.trigger_event(message_event)
 
     async def handle_model_message(self, source, message):
         logging.info(f"🤖  handle_model_message | Received model from {source} with round {message.round}")
@@ -323,12 +266,6 @@ class CommunicationsManager:
                 )
         return
 
-    async def handle_connection_message(self, source, message):
-        try:
-            await self.engine.event_manager.trigger_event(source, message)
-        except Exception as e:
-            logging.exception(f"🔗  handle_connection_message | Error while processing: {message.action} | {e}")
-
     def get_connections_lock(self):
         return self.connections_lock
 
@@ -353,6 +290,9 @@ class CommunicationsManager:
 
     async def handle_connection_wrapper(self, reader, writer):
         asyncio.create_task(self.handle_connection(reader, writer))
+
+    def create_message(self, message_type: str, action: str = "", *args, **kwargs):
+        return self.mm.create_message(message_type, action, *args, **kwargs)
 
     async def handle_connection(self, reader, writer):
         async def process_connection(reader, writer):
@@ -661,7 +601,9 @@ class CommunicationsManager:
                 logging.info(
                     f"Sending model to {dest_addr} with round {round}: weight={weight} | size={sys.getsizeof(serialized_model) / (1024** 2) if serialized_model is not None else 0} MB"
                 )
-                message = self.mm.generate_model_message(round, serialized_model, weight)
+                # message = self.mm.generate_model_message(round, serialized_model, weight)
+                parameters = serialized_model
+                message = self.mm.create_message("model", "", round, parameters, weight)
                 await conn.send(data=message, is_compressed=True)
                 logging.info(f"Model sent to {dest_addr} with round {round}")
             except Exception as e:
@@ -852,7 +794,8 @@ class CommunicationsManager:
         try:
             if mutual_disconnection:
                 await self.connections[dest_addr].send(
-                    data=self.mm.generate_connection_message(nebula_pb2.ConnectionMessage.Action.DISCONNECT)
+                    # data=self.mm.generate_connection_message(nebula_pb2.ConnectionMessage.Action.DISCONNECT)
+                    data=self.create_message("connection", "disconnect")
                 )
                 await asyncio.sleep(1)
                 self.connections[dest_addr].stop()
@@ -932,6 +875,9 @@ class CommunicationsManager:
 
     def get_ready_connections(self):
         return {addr for addr, conn in self.connections.items() if conn.get_ready()}
+
+    def learning_finished(self):
+        return self.engine.learning_cycle_finished()
 
     def check_finished_experiment(self):
         return all(
