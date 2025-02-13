@@ -192,36 +192,36 @@ class NebulaEventHandler(PatternMatchingEventHandler):
 
         try:
             port_mapping = {}
-            new_port_start = 50001
-            for filename in os.listdir(scenario_path):
-                if filename.endswith(".json") and filename.startswith("participant"):
-                    file_path = os.path.join(scenario_path, filename)
+            new_port_start = 50000
+            
+            participant_files = sorted(
+                f for f in os.listdir(scenario_path) if f.endswith(".json") and f.startswith("participant")
+            )
+            
+            for filename in participant_files:
+                file_path = os.path.join(scenario_path, filename)
+                with open(file_path) as json_file:
+                    node = json.load(json_file)
+                current_port = node["network_args"]["port"]
+                port_mapping[current_port] = SocketUtils.find_free_port(start_port=new_port_start)
+                logging.info(f"Participant file: {filename} | Current port: {current_port} | New port: {port_mapping[current_port]}")
+                new_port_start = port_mapping[current_port] + 1
 
-                    with open(file_path) as json_file:
-                        node = json.load(json_file)
+            for filename in participant_files:
+                file_path = os.path.join(scenario_path, filename)
+                with open(file_path) as json_file:
+                    node = json.load(json_file)
+                current_port = node["network_args"]["port"]
+                node["network_args"]["port"] = port_mapping[current_port]
+                neighbors = node["network_args"]["neighbors"]
 
-                    current_port = node["network_args"]["port"]
-                    port_mapping[current_port] = SocketUtils.find_free_port(start_port=new_port_start)
-                    new_port_start = port_mapping[current_port] + 1
+                for old_port, new_port in port_mapping.items():
+                    neighbors = neighbors.replace(f":{old_port}", f":{new_port}")
 
-            for filename in os.listdir(scenario_path):
-                if filename.endswith(".json") and filename.startswith("participant"):
-                    file_path = os.path.join(scenario_path, filename)
+                node["network_args"]["neighbors"] = neighbors
 
-                    with open(file_path) as json_file:
-                        node = json.load(json_file)
-
-                    current_port = node["network_args"]["port"]
-                    node["network_args"]["port"] = port_mapping[current_port]
-                    neighbors = node["network_args"]["neighbors"]
-
-                    for old_port, new_port in port_mapping.items():
-                        neighbors = neighbors.replace(f":{old_port}", f":{new_port}")
-
-                    node["network_args"]["neighbors"] = neighbors
-
-                    with open(file_path, "w") as f:
-                        json.dump(node, f, indent=4)
+                with open(file_path, "w") as f:
+                    json.dump(node, f, indent=4)
 
         except Exception as e:
             print(f"Error processing JSON files: {e}")
