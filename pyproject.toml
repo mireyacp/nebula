@@ -29,6 +29,7 @@ dependencies = [
     "pre-commit<5.0.0,>=4.0.1",
     "ruff<1.0.0,>=0.7.2",
     "tensorboard-reducer==0.3.1",
+    "h5py==3.13.0",
 ]
 
 classifiers = [
@@ -81,6 +82,7 @@ controller = [
     "setuptools==74.1.2",
     "uvicorn==0.30.6",
     "wheel==0.44.0",
+    "h5py==3.13.0",
 ]
 core = [
     "aiohttp==3.10.5",
@@ -118,6 +120,7 @@ core = [
     "torchvision==0.19.1",
     "transformers==4.44.2",
     "web3==6.20.0",
+    "h5py==3.13.0",
 ]
 frontend = [
     "aiosqlite==0.20.0",
@@ -144,12 +147,17 @@ frontend = [
     "python-dotenv==1.0.1",
     "requests==2.32.3",
     "setuptools==74.1.2",
+    "scikit-image==0.24.0",
+    "scikit-learn==1.5.1",
+    "seaborn==0.13.2",
     "tensorboard==2.17.1",
     "tensorboardx==2.6.2.2",
     "torch==2.4.1",
+    "torchvision==0.19.1",
     "uvicorn==0.30.6",
     "web3==6.20.0",
     "wheel==0.44.0",
+    "h5py==3.13.0",
 ]
 
 [build-system]

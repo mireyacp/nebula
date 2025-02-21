@@ -19,8 +19,8 @@ from nebula.addons.trustworthiness.calculation import (
     get_feature_importance_cv,
 )
 from nebula.addons.trustworthiness.utils import check_field_filled, count_class_samples, get_entropy, read_csv
-from nebula.core.models.mnist.cnn import CIFAR10ModelCNN, CIFAR10TorchModelCNN, MNISTModelCNN, MNISTTorchModelCNN
-from nebula.core.models.mnist.mlp import MNISTModelMLP, MNISTTorchModelMLP, SyscallModelMLP, SyscallTorchModelMLP
+from nebula.core.models.mnist.cnn import MNISTModelCNN
+from nebula.core.models.mnist.mlp import MNISTModelMLP
 
 dirname = os.path.dirname(__file__)
 
@@ -119,10 +119,8 @@ class Factsheet:
                         model = MNISTModelMLP()
                     elif dataset == "MNIST" and algorithm == "CNN":
                         model = MNISTModelCNN()
-                    elif dataset == "Syscall" and algorithm == "MLP":
-                        model = SyscallModelMLP()
                     else:
-                        model = CIFAR10ModelCNN()
+                        model = MNISTModelCNN()
 
                     factsheet["configuration"]["learning_rate"] = model.get_learning_rate()
                     factsheet["configuration"]["trainable_param_num"] = model.count_parameters()
@@ -225,8 +223,6 @@ class Factsheet:
                     pytorch_model = MNISTTorchModelMLP()
                 elif dataset == "MNIST" and model == "CNN":
                     pytorch_model = MNISTTorchModelCNN()
-                elif dataset == "Syscall" and model == "MLP":
-                    pytorch_model = SyscallTorchModelMLP()
                 else:
                     pytorch_model = CIFAR10TorchModelCNN()
 

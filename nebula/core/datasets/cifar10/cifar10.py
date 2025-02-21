@@ -1,16 +1,44 @@
 import os
 
+from PIL import Image
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 
-from nebula.core.datasets.nebuladataset import NebulaDataset
+from nebula.core.datasets.nebuladataset import NebulaDataset, NebulaPartitionHandler
+
+
+class CIFAR10PartitionHandler(NebulaPartitionHandler):
+    def __init__(self, file_path, prefix, mode):
+        super().__init__(file_path, prefix, mode)
+
+        # Custom transform for CIFAR10
+        mean = (0.4914, 0.4822, 0.4465)
+        std = (0.2471, 0.2435, 0.2616)
+        self.transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std, inplace=True),
+        ])
+
+    def __getitem__(self, idx):
+        img, target = super().__getitem__(idx)
+
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target
 
 
 class CIFAR10Dataset(NebulaDataset):
     def __init__(
         self,
         num_classes=10,
-        partition_id=0,
         partitions_number=1,
         batch_size=32,
         num_workers=4,
@@ -18,11 +46,10 @@ class CIFAR10Dataset(NebulaDataset):
         partition="dirichlet",
         partition_parameter=0.5,
         seed=42,
-        config=None,
+        config_dir=None,
     ):
         super().__init__(
             num_classes=num_classes,
-            partition_id=partition_id,
             partitions_number=partitions_number,
             batch_size=batch_size,
             num_workers=num_workers,
@@ -30,7 +57,7 @@ class CIFAR10Dataset(NebulaDataset):
             partition=partition,
             partition_parameter=partition_parameter,
             seed=seed,
-            config=config,
+            config_dir=config_dir,
         )
 
     def initialize_dataset(self):
@@ -40,39 +67,15 @@ class CIFAR10Dataset(NebulaDataset):
         if self.test_set is None:
             self.test_set = self.load_cifar10_dataset(train=False)
 
-        # All nodes have the same test set (indices are the same for all nodes)
-        self.test_indices_map = list(range(len(self.test_set)))
-
-        # Depending on the iid flag, generate a non-iid or iid map of the train set
-        if self.iid:
-            self.train_indices_map = self.generate_iid_map(self.train_set, self.partition, self.partition_parameter)
-            self.local_test_indices_map = self.generate_iid_map(self.test_set, self.partition, self.partition_parameter)
-        else:
-            self.train_indices_map = self.generate_non_iid_map(self.train_set, self.partition, self.partition_parameter)
-            self.local_test_indices_map = self.generate_non_iid_map(
-                self.test_set, self.partition, self.partition_parameter
-            )
-
-        print(f"Length of train indices map: {len(self.train_indices_map)}")
-        print(f"Lenght of test indices map (global): {len(self.test_indices_map)}")
-        print(f"Length of test indices map (local): {len(self.local_test_indices_map)}")
+        self.data_partitioning(plot=True)
 
     def load_cifar10_dataset(self, train=True):
-        mean = (0.4914, 0.4822, 0.4465)
-        std = (0.2471, 0.2435, 0.2616)
-        apply_transforms = transforms.Compose([
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean, std, inplace=True),
-        ])
         data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
         os.makedirs(data_dir, exist_ok=True)
         return CIFAR10(
             data_dir,
             train=train,
             download=True,
-            transform=apply_transforms,
         )
 
     def generate_non_iid_map(self, dataset, partition="dirichlet", partition_parameter=0.5):
@@ -83,11 +86,7 @@ class CIFAR10Dataset(NebulaDataset):
         else:
             raise ValueError(f"Partition {partition} is not supported for Non-IID map")
 
-        if self.partition_id == 0:
-            self.plot_data_distribution(dataset, partitions_map)
-            self.plot_all_data_distribution(dataset, partitions_map)
-
-        return partitions_map[self.partition_id]
+        return partitions_map
 
     def generate_iid_map(self, dataset, partition="balancediid", partition_parameter=2):
         if partition == "balancediid":
@@ -97,8 +96,4 @@ class CIFAR10Dataset(NebulaDataset):
         else:
             raise ValueError(f"Partition {partition} is not supported for IID map")
 
-        if self.partition_id == 0:
-            self.plot_data_distribution(dataset, partitions_map)
-            self.plot_all_data_distribution(dataset, partitions_map)
-
-        return partitions_map[self.partition_id]
+        return partitions_map

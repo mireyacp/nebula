@@ -259,7 +259,6 @@ First, you must add the Dataset option in the frontend. Adding the Dataset optio
             "EMNIST": ["MLP", "CNN"],
             "CIFAR10": ["CNN", "CNNv2", "CNNv3", "ResNet9", "fastermobilenet", "simplemobilenet"],
             "CIFAR100": ["CNN"],
-            "KITSUN": ["MLP"],
         }
         var datasetSelect = document.getElementById("datasetSelect");
         var modelSelect = document.getElementById("modelSelect");

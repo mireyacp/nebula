@@ -132,9 +132,6 @@
                         <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
                             <input type="checkbox" id="mod-cifar10" value='CIFAR10' style="margin-right: 10px; margin-left: 10px;">CIFAR10
                         </label>
-                        <label style="display: inline-block; align-items: center; margin-bottom: 10px;">
-                            <input type="checkbox" id="mod-militarysar" value='MilitarySAR' style="margin-right: 10px; margin-left: 10px;">MilitarySAR
-                        </label>
                     </div>
                     <hr>
                     <h5>Robustness <i class="fa fa-shield"></i>
@@ -1011,7 +1008,6 @@
             "EMNIST": ["MLP", "CNN"],
             "CIFAR10": ["CNN", "CNNv2", "CNNv3", "ResNet9", "fastermobilenet", "simplemobilenet"],
             "CIFAR100": ["CNN"],
-            "KITSUN": ["MLP"],
         }
         var datasetSelect = document.getElementById("datasetSelect");
         var modelSelect = document.getElementById("modelSelect");
@@ -1380,7 +1376,6 @@
             '                    <li>MNIST: The MNIST dataset</li>\n' +
             '                    <li>FashionMNIST: The FashionMNIST dataset</li>\n' +
             '                    <li>CIFAR10: The CIFAR10 dataset</li>\n' +
-            '                    <li>SYSCALL: The SYSCALL dataset</li>\n' +
             '                </ul>'
 
         contentIIDHelp = '<ul>\n' +
@@ -2003,7 +1998,7 @@
             selectALL(['mod-fully', 'mod-ring', 'mod-star'], document.getElementById("mod-topology").checked);
         });
         document.getElementById("mod-dataset").addEventListener("change", function() {
-            selectALL(['mod-mnist', 'mod-fmnist', 'mod-cifar10', 'mod-militarysar'], document.getElementById("mod-dataset").checked);
+            selectALL(['mod-mnist', 'mod-fmnist', 'mod-cifar10'], document.getElementById("mod-dataset").checked);
         });
         document.getElementById("mod-robustness").addEventListener("change", function() {
             selectALL(['mod-noattack', 'mod-labelflipping', 'mod-samplepoisoning', 'mod-modelpoisoning', 'mod-neuroninversion', 'mod-noiseinjection',
@@ -2025,7 +2020,7 @@
                 return;
             }
 
-            var datasets = ['mod-mnist', 'mod-fmnist', 'mod-cifar10', 'mod-militarysar'];
+            var datasets = ['mod-mnist', 'mod-fmnist', 'mod-cifar10'];
             if (!atLeastOneChecked(datasets)) {
                 alert("Please, select one dataset at least.");
                 return;

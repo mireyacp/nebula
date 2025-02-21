@@ -4,7 +4,6 @@ import sys
 import time
 import warnings
 
-import numpy as np
 import torch
 
 torch.multiprocessing.set_start_method("spawn", force=True)
@@ -18,15 +17,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import logging
 
 from nebula.config.config import Config
-from nebula.core.datasets.cifar10.cifar10 import CIFAR10Dataset
-from nebula.core.datasets.cifar100.cifar100 import CIFAR100Dataset
+from nebula.core.datasets.cifar10.cifar10 import CIFAR10PartitionHandler
+from nebula.core.datasets.cifar100.cifar100 import CIFAR100PartitionHandler
 from nebula.core.datasets.datamodule import DataModule
-from nebula.core.datasets.emnist.emnist import EMNISTDataset
-from nebula.core.datasets.fashionmnist.fashionmnist import FashionMNISTDataset
-from nebula.core.datasets.kitsun.kitsun import KITSUNDataset
-from nebula.core.datasets.militarysar.militarysar import MilitarySARDataset
-from nebula.core.datasets.mnist.mnist import MNISTDataset
-from nebula.core.datasets.syscall.syscall import SYSCALLDataset
+from nebula.core.datasets.emnist.emnist import EMNISTPartitionHandler
+from nebula.core.datasets.fashionmnist.fashionmnist import FashionMNISTPartitionHandler
+from nebula.core.datasets.mnist.mnist import MNISTPartitionHandler
+from nebula.core.datasets.nebuladataset import NebulaPartition
 from nebula.core.engine import AggregatorNode, IdleNode, MaliciousNode, ServerNode, TrainerNode
 from nebula.core.models.cifar10.cnn import CIFAR10ModelCNN
 from nebula.core.models.cifar10.cnnV2 import CIFAR10ModelCNN_V2
@@ -40,13 +37,8 @@ from nebula.core.models.emnist.cnn import EMNISTModelCNN
 from nebula.core.models.emnist.mlp import EMNISTModelMLP
 from nebula.core.models.fashionmnist.cnn import FashionMNISTModelCNN
 from nebula.core.models.fashionmnist.mlp import FashionMNISTModelMLP
-from nebula.core.models.kitsun.mlp import KitsunModelMLP
-from nebula.core.models.militarysar.cnn import MilitarySARModelCNN
 from nebula.core.models.mnist.cnn import MNISTModelCNN
 from nebula.core.models.mnist.mlp import MNISTModelMLP
-from nebula.core.models.syscall.autoencoder import SyscallModelAutoencoder
-from nebula.core.models.syscall.mlp import SyscallModelMLP
-from nebula.core.models.syscall.svm import SyscallModelSGDOneClassSVM
 from nebula.core.role import Role
 from nebula.core.training.lightning import Lightning
 from nebula.core.training.siamese import Siamese
@@ -64,10 +56,6 @@ async def main(config):
     additional_node_status = config.participant["mobility_args"]["additional_node"]["status"]
     additional_node_round = config.participant["mobility_args"]["additional_node"]["round_start"]
 
-    iid = config.participant["data_args"]["iid"]
-    partition_selection = config.participant["data_args"]["partition_selection"]
-    partition_parameter = np.array(config.participant["data_args"]["partition_parameter"], dtype=np.float64)
-
     # Adjust the total number of nodes and the index of the current node for CFL, as it doesn't require a specific partition for the server (not used for training)
     if config.participant["scenario_args"]["federation"] == "CFL":
         n_nodes -= 1
@@ -75,90 +63,42 @@ async def main(config):
             idx -= 1
 
     dataset = None
-    dataset_str = config.participant["data_args"]["dataset"]
+    dataset_name = config.participant["data_args"]["dataset"]
+    handler = None
+    batch_size = None
     num_workers = config.participant["data_args"]["num_workers"]
     model = None
-    if dataset_str == "MNIST":
-        dataset = MNISTDataset(
-            num_classes=10,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
+
+    if dataset_name == "MNIST":
+        batch_size = 32
+        handler = MNISTPartitionHandler
         if model_name == "MLP":
             model = MNISTModelMLP()
         elif model_name == "CNN":
             model = MNISTModelCNN()
         else:
-            raise ValueError(f"Model {model} not supported for dataset {dataset_str}")
-    elif dataset_str == "FashionMNIST":
-        dataset = FashionMNISTDataset(
-            num_classes=10,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
+            raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
+    elif dataset_name == "FashionMNIST":
+        batch_size = 32
+        handler = FashionMNISTPartitionHandler
         if model_name == "MLP":
             model = FashionMNISTModelMLP()
         elif model_name == "CNN":
             model = FashionMNISTModelCNN()
         else:
-            raise ValueError(f"Model {model} not supported for dataset {dataset_str}")
-    elif dataset_str == "EMNIST":
-        dataset = EMNISTDataset(
-            num_classes=10,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
+            raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
+    elif dataset_name == "EMNIST":
+        batch_size = 32
+        handler = EMNISTPartitionHandler
         if model_name == "MLP":
             model = EMNISTModelMLP()
         elif model_name == "CNN":
             model = EMNISTModelCNN()
         else:
-            raise ValueError(f"Model {model} not supported for dataset {dataset_str}")
-    elif dataset_str == "SYSCALL":
-        dataset = SYSCALLDataset(
-            num_classes=10,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
-        if model_name == "MLP":
-            model = SyscallModelMLP()
-        elif model_name == "SVM":
-            model = SyscallModelSGDOneClassSVM()
-        elif model_name == "Autoencoder":
-            model = SyscallModelAutoencoder()
-        else:
-            raise ValueError(f"Model {model} not supported for dataset {dataset_str}")
-    elif dataset_str == "CIFAR10":
-        dataset = CIFAR10Dataset(
-            num_classes=10,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
+            raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
+    elif dataset_name == "CIFAR10":
+        batch_size = 32
+        handler = CIFAR10PartitionHandler
         if model_name == "ResNet9":
             model = CIFAR10ModelResNet(classifier="resnet9")
         elif model_name == "fastermobilenet":
@@ -172,69 +112,30 @@ async def main(config):
         elif model_name == "CNNv3":
             model = CIFAR10ModelCNN_V3()
         else:
-            raise ValueError(f"Model {model} not supported for dataset {dataset_str}")
-    elif dataset_str == "CIFAR100":
-        dataset = CIFAR100Dataset(
-            num_classes=100,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
+            raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
+    elif dataset_name == "CIFAR100":
+        batch_size = 128
+        handler = CIFAR100PartitionHandler
         if model_name == "CNN":
             model = CIFAR100ModelCNN()
         else:
-            raise ValueError(f"Model {model} not supported for dataset {dataset_str}")
-    elif dataset_str == "KITSUN":
-        dataset = KITSUNDataset(
-            num_classes=10,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
-        if model_name == "MLP":
-            model = KitsunModelMLP()
-        else:
-            raise ValueError(f"Model {model} not supported for dataset {dataset_str}")
-    elif dataset_str == "MilitarySAR":
-        dataset = MilitarySARDataset(
-            num_classes=10,
-            partition_id=idx,
-            partitions_number=n_nodes,
-            iid=iid,
-            partition=partition_selection,
-            partition_parameter=partition_parameter,
-            seed=42,
-            config=config,
-        )
-        model = MilitarySARModelCNN()
+            raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
     else:
-        raise ValueError(f"Dataset {dataset_str} not supported")
+        raise ValueError(f"Dataset {dataset_name} not supported")
+    
+    dataset = NebulaPartition(handler=handler, mode="memory", config=config)
+    dataset.load_partition()
+    dataset.log_partition()
 
     datamodule = DataModule(
         train_set=dataset.train_set,
-        train_set_indices=dataset.train_indices_map,
+        train_set_indices=dataset.train_indices,
         test_set=dataset.test_set,
-        test_set_indices=dataset.test_indices_map,
-        local_test_set_indices=dataset.local_test_indices_map,
+        test_set_indices=dataset.test_indices,
+        local_test_set_indices=dataset.local_test_indices,
         num_workers=num_workers,
-        partition_id=idx,
-        partitions_number=n_nodes,
-        batch_size=dataset.batch_size,
+        batch_size=batch_size,
     )
-
-    # - Import MNISTDatasetScikit (not torch component)
-    # - Import scikit-learn model
-    # - Import ScikitDataModule
-    # - Import Scikit as trainer
-    # - Import aggregation algorithm adapted to scikit-learn models (e.g. FedAvgSVM)
 
     trainer = None
     trainer_str = config.participant["training_args"]["trainer"]
@@ -242,7 +143,7 @@ async def main(config):
         trainer = Lightning
     elif trainer_str == "scikit":
         raise NotImplementedError
-    elif trainer_str == "siamese" and dataset_str == "CIFAR10":
+    elif trainer_str == "siamese" and dataset_name == "CIFAR10":
         trainer = Siamese
         model = DualAggModel()
         config.participant["model_args"]["model"] = "DualAggModel"

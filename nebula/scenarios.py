@@ -16,6 +16,11 @@ import tensorboard_reducer as tbr
 from nebula.addons.blockchain.blockchain_deployer import BlockchainDeployer
 from nebula.addons.topologymanager import TopologyManager
 from nebula.config.config import Config
+from nebula.core.datasets.cifar10.cifar10 import CIFAR10Dataset
+from nebula.core.datasets.cifar100.cifar100 import CIFAR100Dataset
+from nebula.core.datasets.emnist.emnist import EMNISTDataset
+from nebula.core.datasets.fashionmnist.fashionmnist import FashionMNISTDataset
+from nebula.core.datasets.mnist.mnist import MNISTDataset
 from nebula.core.utils.certificate import generate_ca_certificate, generate_certificate
 from nebula.utils import DockerUtils, FileUtils
 
@@ -555,6 +560,66 @@ class ScenarioManagement:
 
         if additional_participants_files:
             self.config.add_participants_config(additional_participants_files)
+
+        # Splitting dataset
+        dataset_name = self.scenario.dataset
+        dataset = None
+        if dataset_name == "MNIST":
+            dataset = MNISTDataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "FashionMNIST":
+            dataset = FashionMNISTDataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "EMNIST":
+            dataset = EMNISTDataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "CIFAR10":
+            dataset = CIFAR10Dataset(
+                num_classes=10,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        elif dataset_name == "CIFAR100":
+            dataset = CIFAR100Dataset(
+                num_classes=100,
+                partitions_number=self.n_nodes,
+                iid=self.scenario.iid,
+                partition=self.scenario.partition_selection,
+                partition_parameter=self.scenario.partition_parameter,
+                seed=42,
+                config_dir=self.config_dir,
+            )
+        else:
+            raise ValueError(f"Dataset {dataset_name} not supported")
+
+        logging.info(f"Splitting {dataset_name} dataset...")
+        dataset.initialize_dataset()
+        logging.info(f"Splitting {dataset_name} dataset... Done")
 
         if self.scenario.deployment in ["docker", "process"]:
             if self.use_blockchain:

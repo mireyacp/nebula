@@ -23,7 +23,7 @@ class Siamese:
         self.epochs = 1
         logging.getLogger("lightning.pytorch").setLevel(logging.INFO)
         self.round = 0
-        enable_deterministic(self.config)
+        enable_deterministic(seed=self.config.participant["scenario_args"]["random_seed"])
         self.logger.log_data({"Round": self.round}, step=self.logger.global_step)
 
     @property

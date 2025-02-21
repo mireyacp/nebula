@@ -6,8 +6,7 @@ import numpy as np
 import torch
 
 
-def enable_deterministic(config):
-    seed = config.participant["scenario_args"]["random_seed"]
+def enable_deterministic(seed):
     logging.info(f"Fixing randomness with seed {seed}")
     np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)

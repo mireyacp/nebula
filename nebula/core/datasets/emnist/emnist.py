@@ -1,16 +1,44 @@
 import os
 
+from PIL import Image
 from torchvision import transforms
 from torchvision.datasets import EMNIST
 
-from nebula.core.datasets.nebuladataset import NebulaDataset
+from nebula.core.datasets.nebuladataset import NebulaDataset, NebulaPartitionHandler
+
+
+class EMNISTPartitionHandler(NebulaPartitionHandler):
+    def __init__(self, file_path, prefix, mode):
+        super().__init__(file_path, prefix, mode)
+
+        # Custom transform for EMNIST
+        mean = (0.5,)
+        std = (0.5,)
+        self.transform = transforms.Compose([
+            transforms.RandomCrop(28, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean, std, inplace=True),
+        ])
+
+    def __getitem__(self, idx):
+        img, target = super().__getitem__(idx)
+
+        img = Image.fromarray(img, mode="L")
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target
 
 
 class EMNISTDataset(NebulaDataset):
     def __init__(
         self,
-        num_classes=10,
-        partition_id=0,
+        num_classes=47,
         partitions_number=1,
         batch_size=32,
         num_workers=4,
@@ -18,11 +46,10 @@ class EMNISTDataset(NebulaDataset):
         partition="dirichlet",
         partition_parameter=0.5,
         seed=42,
-        config=None,
+        config_dir=None,
     ):
         super().__init__(
             num_classes=num_classes,
-            partition_id=partition_id,
             partitions_number=partitions_number,
             batch_size=batch_size,
             num_workers=num_workers,
@@ -30,7 +57,7 @@ class EMNISTDataset(NebulaDataset):
             partition=partition,
             partition_parameter=partition_parameter,
             seed=seed,
-            config=config,
+            config_dir=config_dir,
         )
 
     def initialize_dataset(self):
@@ -39,38 +66,14 @@ class EMNISTDataset(NebulaDataset):
         if self.test_set is None:
             self.test_set = self.load_emnist_dataset(train=False)
 
-        # All nodes have the same test set (indices are the same for all nodes)
-        self.test_indices_map = list(range(len(self.test_set)))
-
-        # Depending on the iid flag, generate a non-iid or iid map of the train set
-        if self.iid:
-            self.train_indices_map = self.generate_iid_map(self.train_set, self.partition, self.partition_parameter)
-            self.local_test_indices_map = self.generate_iid_map(self.test_set, self.partition, self.partition_parameter)
-        else:
-            self.train_indices_map = self.generate_non_iid_map(self.train_set, self.partition, self.partition_parameter)
-            self.local_test_indices_map = self.generate_non_iid_map(
-                self.test_set, self.partition, self.partition_parameter
-            )
-
-        print(f"Length of train indices map: {len(self.train_indices_map)}")
-        print(f"Lenght of test indices map (global): {len(self.test_indices_map)}")
-        print(f"Length of test indices map (local): {len(self.local_test_indices_map)}")
+        self.data_partitioning(plot=True)
 
     def load_emnist_dataset(self, train=True):
-        mean = (0.5,)  # Adjusted mean for 1 channel
-        std = (0.5,)  # Adjusted std for 1 channel
-        apply_transforms = transforms.Compose([
-            transforms.RandomCrop(28, padding=4),  # Crop size changed to 28
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean, std, inplace=True),
-        ])
         return EMNIST(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), "data"),
             train=train,
             download=True,
-            transform=apply_transforms,
-            split="digits",
+            split="balanced",
         )
 
     def generate_non_iid_map(self, dataset, partition="dirichlet", partition_parameter=0.5):
@@ -81,11 +84,7 @@ class EMNISTDataset(NebulaDataset):
         else:
             raise ValueError(f"Partition {partition} is not supported for Non-IID map")
 
-        if self.partition_id == 0:
-            self.plot_data_distribution(dataset, partitions_map)
-            self.plot_all_data_distribution(dataset, partitions_map)
-
-        return partitions_map[self.partition_id]
+        return partitions_map
 
     def generate_iid_map(self, dataset, partition="balancediid", partition_parameter=2):
         if partition == "balancediid":
@@ -95,8 +94,4 @@ class EMNISTDataset(NebulaDataset):
         else:
             raise ValueError(f"Partition {partition} is not supported for IID map")
 
-        if self.partition_id == 0:
-            self.plot_data_distribution(dataset, partitions_map)
-            self.plot_all_data_distribution(dataset, partitions_map)
-
-        return partitions_map[self.partition_id]
+        return partitions_map

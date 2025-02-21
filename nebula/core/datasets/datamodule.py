@@ -18,8 +18,6 @@ class DataModule(LightningDataModule):
         test_set,
         test_set_indices,
         local_test_set_indices,
-        partition_id=0,
-        partitions_number=1,
         batch_size=32,
         num_workers=0,
         val_percent=0.1,
@@ -31,8 +29,6 @@ class DataModule(LightningDataModule):
         self.test_set = test_set
         self.test_set_indices = test_set_indices
         self.local_test_set_indices = local_test_set_indices
-        self.partition_id = partition_id
-        self.partitions_number = partitions_number
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.val_percent = val_percent
@@ -78,9 +74,6 @@ class DataModule(LightningDataModule):
             # Test sets
             self.global_te_subset = ChangeableSubset(self.test_set, self.test_set_indices)
             self.local_te_subset = ChangeableSubset(self.test_set, self.local_test_set_indices)
-
-            if len(self.test_set) < self.partitions_number:
-                raise ValueError("Too many partitions for the size of the test set.")
 
     def teardown(self, stage=None):
         # Teardown the datasets

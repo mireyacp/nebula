@@ -134,7 +134,7 @@ class Lightning:
         self.log_dir = os.path.join(self.config.participant["tracking_args"]["log_dir"], self.experiment_name)
         self._logger = None
         self.create_logger()
-        enable_deterministic(self.config)
+        enable_deterministic(seed=self.config.participant["scenario_args"]["random_seed"])
 
     @property
     def logger(self):

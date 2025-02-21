@@ -22,10 +22,10 @@ NEBULA_FRONTEND_TEMPLATES_DIR=/nebula/nebula/frontend/templates
 echo "NEBULA_PRODUCTION: $NEBULA_PRODUCTION"
 if [ "$NEBULA_PRODUCTION" = "False" ]; then
     echo "Starting Gunicorn in dev mode..."
-    uvicorn app:app --uds /tmp/$NEBULA_SOCK --reload --reload-dir $NEBULA_FRONTEND_DIR --reload-exclude '*.db' --reload-exclude '*.db-journal' --log-level debug --proxy-headers --forwarded-allow-ips "*" &
+    uvicorn app:app --uds /tmp/$NEBULA_SOCK --log-level debug --proxy-headers --forwarded-allow-ips "*" &
 else
     echo "Starting Gunicorn in production mode..."
-    uvicorn app:app --uds /tmp/$NEBULA_SOCK --reload --reload-dir $NEBULA_FRONTEND_DIR --reload-exclude '*.db' --reload-exclude '*.db-journal' --log-level info --proxy-headers --forwarded-allow-ips "*" &
+    uvicorn app:app --uds /tmp/$NEBULA_SOCK --log-level info --proxy-headers --forwarded-allow-ips "*" &
 fi
 
 if [ "$NEBULA_ADVANCED_ANALYTICS" = "False" ]; then
