@@ -112,7 +112,7 @@
         var host = window.location.hostname;
         var port = window.location.port ? ':' + window.location.port : '';
         var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        var socket = new WebSocket(protocol + '//' + host + port + '/nebula/ws/' + client_id);
+        var socket = new WebSocket(protocol + '//' + host + port + '/platform/ws/' + client_id);
     </script>
 </head>
 
@@ -121,7 +121,7 @@
         <div class="container d-flex align-items-center justify-content-between">
 
             <h1 class="logo">
-                <a href="/nebula" style="white-space: nowrap;">
+                <a href="/platform" style="white-space: nowrap;">
                     <img src="{{ url_for('static', path='images/nebula-icon-white.svg') }}" alt="Nebula Icon"
                         style="height: 50px; margin-right: 5px;">
                     NEBULA
@@ -131,7 +131,7 @@
             <nav id="navbar" class="navbar">
                 <ul>
                     <li><a class="nav-link scrollto {% if request.path == '/' %}active{% endif %}"
-                            href="/nebula">Home</a>
+                            href="/platform">Home</a>
                     </li>
                     <li><a class="nav-link scrollto" href="https://github.com/CyberDataLab/nebula">Source Code</a>
                     </li>
@@ -149,7 +149,7 @@
                         <a class="nav-link dropdown-toggle" href="#" id="navbarLoginDropdown">Login</a>
                         <ul>
                             <li>
-                                <form id="login-form" action="/nebula/login" method="post" class="px-4 py-3">
+                                <form id="login-form" action="/platform/login" method="post" class="px-4 py-3">
                                     <div class="mb-3">
                                         <label for="dropdownLoginFormUsername">Username</label>
                                         <input type="text" name="user" class="form-control"
@@ -226,7 +226,7 @@
 
                 const formData = new FormData(loginForm);
 
-                fetch("/nebula/login", {
+                fetch("/platform/login", {
                     method: "POST",
                     body: formData,
                 })
@@ -234,7 +234,7 @@
                         if (!response.ok) {
                             showAlert('danger', 'Invalid credentials');
                         } else {
-                            window.location.replace("/nebula");
+                            window.location.replace("/platform");
                         }
                     })
                     .catch((error) => {

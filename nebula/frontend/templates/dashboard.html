@@ -246,7 +246,7 @@
 
 <!-- <script>
     setInterval(function () {
-        fetch('/nebula/api/dashboard/runningscenario')
+        fetch('/platform/api/dashboard/runningscenario')
             .then(response => response.json())
             .then(data => {
                 if (data.name) {
@@ -266,7 +266,7 @@
         $('#confirm-modal #confirm-modal-body').html('Are you sure you want to relaunch the scenario ' + scenario_title + '?');
 
         $('#confirm-modal #yes-button').off('click').on('click', function () {
-            const response = fetch('/nebula/dashboard/' + scenario_name + '/relaunch', {
+            const response = fetch('/platform/dashboard/' + scenario_name + '/relaunch', {
                 method: 'GET'
             })
                 .then(response => {
@@ -294,7 +294,7 @@
         $('#confirm-modal #confirm-modal-body').html('Are you sure you want to remove the scenario ' + scenario_name + '?<br><br><p class="badge text-bg-danger">Warning: you will remove the scenario from the database</p>');
 
         $('#confirm-modal #yes-button').off('click').on('click', function () {
-            const response = fetch('/nebula/dashboard/' + scenario_name + '/remove', {
+            const response = fetch('/platform/dashboard/' + scenario_name + '/remove', {
                 method: 'GET'
             })
                 .then(response => {
@@ -341,7 +341,7 @@
 
         if (notesRow.style.display === 'none') {
             try {
-                const response = await fetch('/nebula/dashboard/' + scenarioName + '/notes');
+                const response = await fetch('/platform/dashboard/' + scenarioName + '/notes');
                 const data = await response.json();
                 console.log(data);
 
@@ -366,7 +366,7 @@
 
         if (configRow.style.display === 'none') {
             try {
-                const response = await fetch(`/nebula/dashboard/${scenarioName}/config`);
+                const response = await fetch(`/platform/dashboard/${scenarioName}/config`);
                 const data = await response.json();
 
                 if (data.status === 'success') {
@@ -386,7 +386,7 @@
     async function saveNotes(scenarioName) {
         const notesText = document.getElementById('notes-text-' + scenarioName).value;
 
-        const response = await fetch('/nebula/dashboard/' + scenarioName + '/save_note', {
+        const response = await fetch('/platform/dashboard/' + scenarioName + '/save_note', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

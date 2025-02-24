@@ -40,8 +40,8 @@ class CommunicationsManager:
         self.config = engine.get_config()
         self.id = str(self.config.participant["device_args"]["idx"])
 
-        self.register_endpoint = f"http://{self.config.participant['scenario_args']['controller']}/nebula/dashboard/{self.config.participant['scenario_args']['name']}/node/register"
-        self.wait_endpoint = f"http://{self.config.participant['scenario_args']['controller']}/nebula/dashboard/{self.config.participant['scenario_args']['name']}/node/wait"
+        self.register_endpoint = f"http://{self.config.participant['scenario_args']['controller']}/platform/dashboard/{self.config.participant['scenario_args']['name']}/node/register"
+        self.wait_endpoint = f"http://{self.config.participant['scenario_args']['controller']}/platform/dashboard/{self.config.participant['scenario_args']['name']}/node/wait"
 
         self._connections = {}
         self.connections_lock = Locker(name="connections_lock", async_lock=True)

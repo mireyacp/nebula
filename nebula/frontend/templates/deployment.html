@@ -2130,7 +2130,7 @@
     <script>
         // Send configuration to the server for deployment
 
-        // When click "run-btn" button, create a POST request to /nebula/dashboard/deployment/run with JSON data
+        // When click "run-btn" button, create a POST request to /platform/dashboard/deployment/run with JSON data
         document.getElementById("run-btn").addEventListener("click", function () {
 
             // Show the modal
@@ -2166,7 +2166,7 @@
                     document.querySelector(".overlay").style.display = "block";
                     document.getElementById("spinner").style.display = "block";
 
-                    fetch("/nebula/dashboard/deployment/run", {
+                    fetch("/platform/dashboard/deployment/run", {
                         method: "POST",
                         headers: {
                             'Content-Type': 'application/json'
@@ -2603,7 +2603,7 @@
             let textAreas = "";
             for (let i = 0; i < numberOfNodes; i++) {
                 textAreas += `<h4>Participant ${i}</h4>`;
-                let response = await fetch(`/nebula/dashboard/deployment/participant/file`);
+                let response = await fetch(`/platform/dashboard/deployment/participant/file`);
                 let json = await response.json();
                 textAreas += `<textarea class="form-control" rows="10" cols="50" style="width:100%;" name="participant${i}">${JSON.stringify(json, null, 4)}</textarea>`;
                 // textAreas += `<textarea class="form-control" rows="10" cols="50" name="scenario" id="scenario" style="width:100%;"></textarea>`;
