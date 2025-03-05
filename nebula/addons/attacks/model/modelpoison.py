@@ -41,11 +41,19 @@ class ModelPoisonAttack(ModelAttack):
             engine (object): The training engine object.
             attack_params (dict): Dictionary of attack parameters.
         """
-        super().__init__(engine)
+        try:
+            round_start = int(attack_params["round_start_attack"])
+            round_stop = int(attack_params["round_stop_attack"])
+            attack_interval = int(attack_params["attack_interval"])
+        except KeyError as e:
+            raise ValueError(f"Missing required attack parameter: {e}")
+        except ValueError:
+            raise ValueError("Invalid value in attack_params. Ensure all values are integers.")
+        
+        super().__init__(engine, round_start, round_stop, attack_interval)
+
         self.poisoned_ratio = float(attack_params["poisoned_ratio"])
         self.noise_type = attack_params["noise_type"].lower()
-        self.round_start_attack = int(attack_params["round_start_attack"])
-        self.round_stop_attack = int(attack_params["round_stop_attack"])
 
     def modelPoison(self, model: OrderedDict, poisoned_ratio, noise_type="gaussian"):
         """

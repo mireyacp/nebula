@@ -13,7 +13,7 @@ class DatasetAttack(Attack):
     data, potentially impacting the model's training process.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine, round_start_attack, round_stop_attack, attack_interval):
         """
         Initializes the DatasetAttack with the given engine.
 
@@ -21,8 +21,9 @@ class DatasetAttack(Attack):
             engine: The engine managing the attack context.
         """
         self.engine = engine
-        self.round_start_attack = 0
-        self.round_stop_attack = 10
+        self.round_start_attack = round_start_attack
+        self.round_stop_attack = round_stop_attack
+        self.attack_interval = attack_interval
 
     async def attack(self):
         """
@@ -32,11 +33,13 @@ class DatasetAttack(Attack):
         with a malicious dataset. The attack is stopped when the engine reaches the
         designated stop round.
         """
-        if self.engine.round in range(self.round_start_attack, self.round_stop_attack):
-            logging.info("[DatasetAttack] Performing attack")
+        if self.engine.round not in range(self.round_start_attack, self.round_stop_attack + 1):
+            pass
+        elif  self.engine.round == self.round_stop_attack:
+            logging.info(f"[{self.__class__.__name__}] Stopping attack")
+        elif self.engine.round >= self.round_start_attack and ((self.engine.round - self.round_start_attack) % self.attack_interval == 0):
+            logging.info(f"[{self.__class__.__name__}] Performing attack")
             self.engine.trainer.datamodule.train_set = self.get_malicious_dataset()
-        elif self.engine.round == self.round_stop_attack + 1:
-            logging.info("[DatasetAttack] Stopping attack")
 
     async def _inject_malicious_behaviour(self, target_function, *args, **kwargs):
         """

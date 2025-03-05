@@ -366,7 +366,7 @@ class Engine:
                 self.total_rounds = self.config.participant["scenario_args"]["rounds"]
                 epochs = self.config.participant["training_args"]["epochs"]
                 await self.get_round_lock().acquire_async()
-                self.round = 0
+                self.round = 1
                 await self.get_round_lock().release_async()
                 await self.learning_cycle_lock.release_async()
                 print_msg_box(
@@ -458,7 +458,7 @@ class Engine:
         return not (self.round < self.total_rounds)
 
     async def _learning_cycle(self):
-        while self.round is not None and self.round < self.total_rounds:
+        while self.round is not None and self.round <= self.total_rounds:
             print_msg_box(
                 msg=f"Round {self.round} of {self.total_rounds} started.",
                 indent=2,

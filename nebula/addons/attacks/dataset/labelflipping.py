@@ -32,14 +32,21 @@ class LabelFlippingAttack(DatasetAttack):
             attack_params (dict): Parameters for the attack, including the percentage of
                                   poisoned data, targeting options, and label specifications.
         """
-        super().__init__(engine)
+        try:
+            round_start = int(attack_params["round_start_attack"])
+            round_stop = int(attack_params["round_stop_attack"])
+            attack_interval = int(attack_params["attack_interval"])
+        except KeyError as e:
+            raise ValueError(f"Missing required attack parameter: {e}")
+        except ValueError:
+            raise ValueError("Invalid value in attack_params. Ensure all values are integers.")
+
+        super().__init__(engine, round_start, round_stop, attack_interval)
         self.datamodule = engine._trainer.datamodule
         self.poisoned_percent = float(attack_params["poisoned_percent"])
         self.targeted = attack_params["targeted"]
         self.target_label = int(attack_params["target_label"])
         self.target_changed_label = int(attack_params["target_changed_label"])
-        self.round_start_attack = int(attack_params["round_start_attack"])
-        self.round_stop_attack = int(attack_params["round_stop_attack"])
 
     def labelFlipping(
         self,

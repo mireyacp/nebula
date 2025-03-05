@@ -26,9 +26,16 @@ class GLLNeuronInversionAttack(ModelAttack):
             engine (object): The training engine object.
             _ (any): A placeholder argument (not used in this class).
         """
-        super().__init__(engine)
-        self.round_start_attack = int(attack_params["round_start_attack"])
-        self.round_stop_attack = int(attack_params["round_stop_attack"])
+        try:
+            round_start = int(attack_params["round_start_attack"])
+            round_stop = int(attack_params["round_stop_attack"])
+            attack_interval = int(attack_params["attack_interval"])
+        except KeyError as e:
+            raise ValueError(f"Missing required attack parameter: {e}")
+        except ValueError:
+            raise ValueError("Invalid value in attack_params. Ensure all values are integers.")
+        
+        super().__init__(engine, round_start, round_stop, attack_interval)
 
     def model_attack(self, received_weights):
         """

@@ -20,7 +20,7 @@ class ModelAttack(Attack):
                          model aggregation.
     """
 
-    def __init__(self, engine):
+    def __init__(self, engine, round_start_attack, round_stop_attack, attack_interval):
         """
         Initializes the ModelAttack with the specified engine.
 
@@ -31,8 +31,9 @@ class ModelAttack(Attack):
         self.engine = engine
         self.aggregator = engine._aggregator
         self.original_aggregation = engine.aggregator.run_aggregation
-        self.round_start_attack = 0
-        self.round_stop_attack = 10
+        self.round_start_attack = round_start_attack
+        self.round_stop_attack = round_stop_attack
+        self.attack_interval = attack_interval
 
     def aggregator_decorator(self):
         """
@@ -104,11 +105,13 @@ class ModelAttack(Attack):
 
         This method logs the attack and calls the method to modify the aggregator.
         """
-        if self.engine.round == self.round_start_attack:
-            logging.info("[ModelAttack] Injecting malicious behaviour")
-            await self._inject_malicious_behaviour()
-        elif self.engine.round == self.round_stop_attack + 1:
-            logging.info("[ModelAttack] Stopping attack")
+        if self.engine.round not in range(self.round_start_attack, self.round_stop_attack + 1):
+            pass
+        elif self.engine.round == self.round_stop_attack:
+            logging.info(f"[{self.__class__.__name__}] Stopping attack")
             await self._restore_original_behaviour()
-        elif self.engine.round in range(self.round_start_attack, self.round_stop_attack):
-            logging.info("[ModelAttack] Performing attack")
+        elif (self.engine.round == self.round_start_attack) or ((self.engine.round - self.round_start_attack) % self.attack_interval == 0):
+            logging.info(f"[{self.__class__.__name__}] Performing attack")
+            await self._inject_malicious_behaviour()
+        else:
+            await self._restore_original_behaviour()
