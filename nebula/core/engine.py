@@ -279,15 +279,14 @@ class Engine:
 
     async def _reputation_callback(self, source, message):
         malicious_nodes = message.arguments  # List of malicious nodes
-        if self.with_reputation:
-            if len(malicious_nodes) > 0 and not self._is_malicious:
-                if self.is_dynamic_topology:
-                    await self._disrupt_connection_using_reputation(malicious_nodes)
-                if self.is_dynamic_aggregation and self.aggregator != self.target_aggregation:
-                    await self._dynamic_aggregator(
-                        self.aggregator.get_nodes_pending_models_to_aggregate(),
-                        malicious_nodes,
-                    )
+        if self.with_reputation and len(malicious_nodes) > 0 and not self._is_malicious:
+            if self.is_dynamic_topology:
+                await self._disrupt_connection_using_reputation(malicious_nodes)
+            if self.is_dynamic_aggregation and self.aggregator != self.target_aggregation:
+                await self._dynamic_aggregator(
+                    self.aggregator.get_nodes_pending_models_to_aggregate(),
+                    malicious_nodes,
+                )
 
     async def _federation_federation_models_included_callback(self, source, message):
         logging.info(f"📝  handle_federation_message | Trigger | Received aggregation finished message from {source}")
@@ -366,7 +365,7 @@ class Engine:
                 self.total_rounds = self.config.participant["scenario_args"]["rounds"]
                 epochs = self.config.participant["training_args"]["epochs"]
                 await self.get_round_lock().acquire_async()
-                self.round = 1
+                self.round = 0
                 await self.get_round_lock().release_async()
                 await self.learning_cycle_lock.release_async()
                 print_msg_box(
@@ -433,7 +432,7 @@ class Engine:
             self.aggregator = self.target_aggregation
             await self.aggregator.update_federation_nodes(self.federation_nodes)
 
-            for subnodes in aggregated_models_weights.keys():
+            for subnodes in aggregated_models_weights:
                 sublist = subnodes.split()
                 (submodel, weights) = aggregated_models_weights[subnodes]
                 for node in sublist:
@@ -458,9 +457,9 @@ class Engine:
         return not (self.round < self.total_rounds)
 
     async def _learning_cycle(self):
-        while self.round is not None and self.round <= self.total_rounds:
+        while self.round is not None and self.round < self.total_rounds:
             print_msg_box(
-                msg=f"Round {self.round} of {self.total_rounds} started.",
+                msg=f"Round {self.round} of {self.total_rounds - 1} started (max. {self.total_rounds} rounds)",
                 indent=2,
                 title="Round information",
             )
@@ -476,13 +475,13 @@ class Engine:
 
             await self.get_round_lock().acquire_async()
             print_msg_box(
-                msg=f"Round {self.round} of {self.total_rounds} finished.",
+                msg=f"Round {self.round} of {self.total_rounds - 1} finished (max. {self.total_rounds} rounds)",
                 indent=2,
                 title="Round information",
             )
             await self.aggregator.reset()
             self.trainer.on_round_end()
-            self.round = self.round + 1
+            self.round += 1
             self.config.participant["federation_args"]["round"] = (
                 self.round
             )  # Set current round in config (send to the controller)
@@ -492,7 +491,7 @@ class Engine:
         self.trainer.on_learning_cycle_end()
         await self.trainer.test()
         print_msg_box(
-            msg="Federated Learning process has been completed.",
+            msg=f"FL process has been completed successfully (max. {self.total_rounds} rounds reached)",
             indent=2,
             title="End of the experiment",
         )
@@ -529,7 +528,7 @@ class Engine:
         loss_threshold = 0.5
 
         current_models = {}
-        for subnodes in aggregated_models_weights.keys():
+        for subnodes in aggregated_models_weights:
             sublist = subnodes.split()
             submodel = aggregated_models_weights[subnodes][0]
             for node in sublist:
@@ -564,9 +563,6 @@ class Engine:
 
     async def send_reputation(self, malicious_nodes):
         logging.info(f"Sending REPUTATION to the rest of the topology: {malicious_nodes}")
-        # message = self.cm.mm.generate_federation_message(
-        #     nebula_pb2.FederationMessage.Action.REPUTATION, malicious_nodes
-        # )
         message = self.cm.create_message("federation", "reputation", arguments=[str(arg) for arg in (malicious_nodes)])
         await self.cm.send_message_to_neighbors(message)
 
@@ -593,7 +589,7 @@ class MaliciousNode(Engine):
     async def _extended_learning_cycle(self):
         try:
             await self.attack.attack()
-        except:
+        except Exception:
             attack_name = self.config.participant["adversarial_args"]["attacks"]
             logging.exception(f"Attack {attack_name} failed")
 
