@@ -142,8 +142,6 @@ class Engine:
 
         self._reporter = Reporter(config=self.config, trainer=self.trainer, cm=self.cm)
 
-        self.trainning_in_progress_lock = Locker(name="trainning_in_progress_lock", async_lock=True)
-
         self._addon_manager = AddonManager(self, self.config)
 
     @property
@@ -188,9 +186,6 @@ class Engine:
 
     def get_federation_setup_lock(self):
         return self.federation_setup_lock
-
-    def get_trainning_in_progress_lock(self):
-        return self.trainning_in_progress_lock
 
     def get_round_lock(self):
         return self.round_lock
@@ -712,10 +707,8 @@ class AggregatorNode(Engine):
 
     async def _extended_learning_cycle(self):
         # Define the functionality of the aggregator node
-        await self.trainer.test()
-        await self.trainning_in_progress_lock.acquire_async()
         await self.trainer.train()
-        await self.trainning_in_progress_lock.release_async()
+        await self.trainer.test()
 
         self_update_event = UpdateReceivedEvent(
             self.trainer.get_model_parameters(), self.trainer.get_model_weight(), self.addr, self.round
@@ -777,8 +770,8 @@ class TrainerNode(Engine):
         # Define the functionality of the trainer node
         logging.info("Waiting global update | Assign _waiting_global_update = True")
 
-        await self.trainer.test()
         await self.trainer.train()
+        await self.trainer.test()
 
         self_update_event = UpdateReceivedEvent(
             self.trainer.get_model_parameters(), self.trainer.get_model_weight(), self.addr, self.round, local=True
