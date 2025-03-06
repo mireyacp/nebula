@@ -376,7 +376,7 @@ class Engine:
         updt_nei_event = UpdateNeighborEvent(removed_neighbor_addr, remove)
         asyncio.create_task(EventManager.get_instance().publish_node_event(updt_nei_event))
 
-    async def broadcast_models_include(self, age: AggregationEvent):
+    async def broadcast_models_include(self, aggregation_event: AggregationEvent):
         logging.info(f"🔄  Broadcasting MODELS_INCLUDED for round {self.get_round()}")
         message = self.cm.create_message(
             "federation", "federation_models_included", [str(arg) for arg in [self.get_round()]]
@@ -529,13 +529,6 @@ class Engine:
             self.trainer.set_model_parameters(params)
         else:
             logging.error("Aggregation finished with no parameters")
-
-    def print_round_information(self):
-        print_msg_box(
-            msg=f"Round {self.round} of {self.total_rounds} started.",
-            indent=2,
-            title="Round information",
-        )
 
     def learning_cycle_finished(self):
         return not (self.round < self.total_rounds)
@@ -707,8 +700,8 @@ class AggregatorNode(Engine):
 
     async def _extended_learning_cycle(self):
         # Define the functionality of the aggregator node
-        await self.trainer.train()
         await self.trainer.test()
+        await self.trainer.train()
 
         self_update_event = UpdateReceivedEvent(
             self.trainer.get_model_parameters(), self.trainer.get_model_weight(), self.addr, self.round
@@ -770,8 +763,8 @@ class TrainerNode(Engine):
         # Define the functionality of the trainer node
         logging.info("Waiting global update | Assign _waiting_global_update = True")
 
-        await self.trainer.train()
         await self.trainer.test()
+        await self.trainer.train()
 
         self_update_event = UpdateReceivedEvent(
             self.trainer.get_model_parameters(), self.trainer.get_model_weight(), self.addr, self.round, local=True

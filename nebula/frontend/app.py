@@ -455,41 +455,38 @@ async def nebula_dashboard_runningscenario():
 
 async def get_host_resources():
     url = f"http://{settings.controller_host}:{settings.controller_port}/resources"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                try:
-                    return await response.json()
-                except Exception as e:
-                    return {"error": f"Failed to parse JSON: {e}"}
-            else:
-                return None
+    async with aiohttp.ClientSession() as session, session.get(url) as response:
+        if response.status == 200:
+            try:
+                return await response.json()
+            except Exception as e:
+                return {"error": f"Failed to parse JSON: {e}"}
+        else:
+            return None
 
 
 async def get_available_gpus():
     url = f"http://{settings.controller_host}:{settings.controller_port}/available_gpus"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                try:
-                    return await response.json()
-                except Exception as e:
-                    return {"error": f"Failed to parse JSON: {e}"}
-            else:
-                return None
+    async with aiohttp.ClientSession() as session, session.get(url) as response:
+        if response.status == 200:
+            try:
+                return await response.json()
+            except Exception as e:
+                return {"error": f"Failed to parse JSON: {e}"}
+        else:
+            return None
 
 
 async def get_least_memory_gpu():
     url = f"http://{settings.controller_host}:{settings.controller_port}/least_memory_gpu"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                try:
-                    return await response.json()
-                except Exception as e:
-                    return {"error": f"Failed to parse JSON: {e}"}
-            else:
-                return None
+    async with aiohttp.ClientSession() as session, session.get(url) as response:
+        if response.status == 200:
+            try:
+                return await response.json()
+            except Exception as e:
+                return {"error": f"Failed to parse JSON: {e}"}
+        else:
+            return None
 
 
 async def check_enough_resources():
@@ -1120,7 +1117,7 @@ else:
 
 def zipdir(path, ziph):
     # ziph is zipfile handle
-    for root, dirs, files in os.walk(path):
+    for root, _, files in os.walk(path):
         for file in files:
             ziph.write(
                 os.path.join(root, file),

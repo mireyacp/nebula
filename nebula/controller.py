@@ -90,6 +90,7 @@ async def get_least_memory_gpu():
     gpu_with_least_memory_index = None
 
     if importlib.util.find_spec("pynvml") is not None:
+        max_memory_used_percent = 50
         try:
             import pynvml
 

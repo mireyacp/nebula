@@ -28,7 +28,6 @@ from nebula.core.engine import AggregatorNode, IdleNode, MaliciousNode, ServerNo
 from nebula.core.models.cifar10.cnn import CIFAR10ModelCNN
 from nebula.core.models.cifar10.cnnV2 import CIFAR10ModelCNN_V2
 from nebula.core.models.cifar10.cnnV3 import CIFAR10ModelCNN_V3
-from nebula.core.models.cifar10.dualagg import DualAggModel
 from nebula.core.models.cifar10.fastermobilenet import FasterMobileNet
 from nebula.core.models.cifar10.resnet import CIFAR10ModelResNet
 from nebula.core.models.cifar10.simplemobilenet import SimpleMobileNetV1
@@ -143,12 +142,8 @@ async def main(config):
         trainer = Lightning
     elif trainer_str == "scikit":
         raise NotImplementedError
-    elif trainer_str == "siamese" and dataset_name == "CIFAR10":
+    elif trainer_str == "siamese":
         trainer = Siamese
-        model = DualAggModel()
-        config.participant["model_args"]["model"] = "DualAggModel"
-        config.participant["data_args"]["dataset"] = "CIFAR10"
-        config.participant["aggregator_args"]["algorithm"] = "DualHistAgg"
     else:
         raise ValueError(f"Trainer {trainer_str} not supported")
 

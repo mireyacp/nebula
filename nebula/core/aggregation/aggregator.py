@@ -44,7 +44,6 @@ class Aggregator(ABC):
         logging.info(f"[{self.__class__.__name__}] Starting Aggregator")
         self._federation_nodes = set()
         self._pending_models_to_aggregate = {}
-        self._pending_models_to_aggregate_lock = Locker(name="pending_models_to_aggregate_lock", async_lock=True)
         self._aggregation_done_lock = Locker(name="aggregation_done_lock", async_lock=True)
         self._aggregation_waiting_skip = asyncio.Event()
 
@@ -92,7 +91,7 @@ class Aggregator(ABC):
             await self.us.notify_if_all_updates_received()
             lock_task = asyncio.create_task(self._aggregation_done_lock.acquire_async(timeout=timeout))
             skip_task = asyncio.create_task(self._aggregation_waiting_skip.wait())
-            done, pending = await asyncio.wait(
+            done, _ = await asyncio.wait(
                 [lock_task, skip_task],
                 return_when=asyncio.FIRST_COMPLETED,
             )
@@ -131,13 +130,10 @@ class Aggregator(ABC):
         return aggregated_result
 
     def print_model_size(self, model):
-        total_params = 0
         total_memory = 0
 
         for _, param in model.items():
             num_params = param.numel()
-            total_params += num_params
-
             memory_usage = param.element_size() * num_params
             total_memory += memory_usage
 
