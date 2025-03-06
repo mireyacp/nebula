@@ -52,7 +52,7 @@
     "reordering": "0%"
   },
   "adaptive_args": {
-    "model_similarity": false
+    "model_similarity": true
   },
   "mobility_args": {
     "latitude": "",
@@ -62,6 +62,8 @@
     "random_geo": true,
     "mobility": false,
     "mobility_type": "topology",
+    "topology_type": "",
+    "push_strategy": "slow",
     "radius_federation": 1000,
     "scheme_mobility": "random",
     "round_frequency": 1,
@@ -88,7 +90,8 @@
   },
   "aggregator_args": {
     "algorithm": "FedAvg",
-    "aggregation_timeout": 300
+    "aggregation_timeout": 60,
+    "aggregation_push": "slow"
   },
   "defense_args": {
     "with_reputation": false,

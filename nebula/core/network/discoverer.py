@@ -30,11 +30,6 @@ class Discoverer:
             if len(self.cm.connections) > 0:
                 latitude = self.config.participant["mobility_args"]["latitude"]
                 longitude = self.config.participant["mobility_args"]["longitude"]
-                # message = self.cm.mm.generate_discovery_message(
-                #     action=nebula_pb2.DiscoveryMessage.Action.DISCOVER,
-                #     latitude=latitude,
-                #     longitude=longitude,
-                # )
                 message = self.cm.create_message("discovery", "discover", latitude=latitude, longitude=longitude)
                 try:
                     logging.debug("🔍  Sending discovery message to neighbors...")

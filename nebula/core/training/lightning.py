@@ -245,6 +245,14 @@ class Lightning:
     def set_epochs(self, epochs):
         self.epochs = epochs
 
+    def set_current_round(self, round):
+        logging.info(f"Update | current round = {round}")
+        self.round = round
+        self.model.set_updated_round(round)
+
+    def get_current_loss(self):
+        return self.model.get_loss()
+
     def serialize_model(self, model):
         # From https://pytorch.org/docs/stable/notes/serialization.html
         try:
@@ -350,3 +358,9 @@ class Lightning:
     def on_learning_cycle_end(self):
         self._logger.log_data({"A-Round": self.round})
         # self.reporter.enqueue_data("Round", self.round)
+
+    def update_model_learning_rate(self, new_lr):
+        self.model.modify_learning_rate(new_lr)
+
+    def show_current_learning_rate(self):
+        self.model.show_current_learning_rate()

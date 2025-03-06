@@ -3,6 +3,7 @@ import logging
 import traceback
 from typing import TYPE_CHECKING
 
+from nebula.core.nebulaevents import MessageEvent
 from nebula.core.network.actions import factory_message_action, get_action_name_from_value, get_actions_names
 from nebula.core.pb import nebula_pb2
 
@@ -54,7 +55,7 @@ class MessagesManager:
 
     def get_messages_events(self):
         message_events = {}
-        for message_name in self._message_templates.keys():
+        for message_name in self._message_templates:
             if message_name != "model" and message_name != "reputation":
                 message_events[message_name] = get_actions_names(message_name)
         return message_events
@@ -98,7 +99,6 @@ class MessagesManager:
                     if message_type == "model_message":
                         await self.cm.handle_model_message(source, message_data)
                     else:
-                        # await self.cm.handle_message(source, message_type, message_data)
                         me = MessageEvent(
                             (msg_name, get_action_name_from_value(msg_name, message_data.action)), source, message_data
                         )
@@ -106,7 +106,6 @@ class MessagesManager:
             # Rest of messages
             else:
                 if await self.cm.include_received_message_hash(hashlib.md5(data).hexdigest()):
-                    # await self.cm.handle_message(source, message_type, message_data)
                     me = MessageEvent(
                         (msg_name, get_action_name_from_value(msg_name, message_data.action)), source, message_data
                     )
@@ -169,7 +168,7 @@ class MessagesManager:
         # logging.info(f"kwargs parameters: {kwargs.keys()}")
         for param_name in template_params:
             if param_name not in kwargs:
-                logging.info(f"Filling parameter '{param_name}' with default value: {default_values.get(param_name)}")
+                # logging.info(f"Filling parameter '{param_name}' with default value: {default_values.get(param_name)}")
                 kwargs[param_name] = default_values.get(param_name)
 
         # Create an instance of the protobuf message class using the constructed kwargs
@@ -181,10 +180,3 @@ class MessagesManager:
         getattr(message_wrapper, field_name).CopyFrom(message)
         data = message_wrapper.SerializeToString()
         return data
-
-
-class MessageEvent:
-    def __init__(self, message_type, source, message):
-        self.source = source
-        self.message_type = message_type
-        self.message = message

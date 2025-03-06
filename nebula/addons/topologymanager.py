@@ -169,15 +169,12 @@ class TopologyManager:
             None: The method saves the plot as an image at the specified path.
         """
         g = nx.from_numpy_array(self.topology)
-        # pos = nx.layout.spectral_layout(g)
-        # pos = nx.spring_layout(g, pos=pos, iterations=50)
         pos = nx.spring_layout(g, k=0.15, iterations=20, seed=42)
 
         fig = plt.figure(num="Network topology", dpi=100, figsize=(6, 6), frameon=False)
         ax = fig.add_axes([0, 0, 1, 1])
         ax.set_xlim([-1.3, 1.3])
         ax.set_ylim([-1.3, 1.3])
-        # ax.axis('off')
         labels = {}
         color_map = []
         for k in range(self.n_nodes):
@@ -185,27 +182,12 @@ class TopologyManager:
             color_map.append(self.get_node_color(role))
             labels[k] = f"P{k}\n" + str(self.nodes[k][0]) + ":" + str(self.nodes[k][1])
 
-        # nx.draw_networkx_nodes(g, pos_shadow, node_color='k', alpha=0.5)
         nx.draw_networkx_nodes(g, pos, node_color=color_map, linewidths=2)
         nx.draw_networkx_labels(g, pos, labels, font_size=10, font_weight="bold")
         nx.draw_networkx_edges(g, pos, width=2)
-        # plt.margins(0.0)
 
         self.add_legend([str(node[2]) for node in self.nodes])
-
-        # plt.scatter([], [], c="green", label='Central Server')
-        # plt.scatter([], [], c="orange", label='Aggregator')
-        # plt.scatter([], [], c="#6182bd", label='Trainer')
-        # plt.scatter([], [], c="purple", label='Proxy')
-        # plt.scatter([], [], c="red", label='Idle')
-        # import sys
-        # if path is None:
-        #    if not os.path.exists(f"{sys.path[0]}/logs/{self.scenario_name}"):
-        #        os.makedirs(f"{sys.path[0]}/logs/{self.scenario_name}")
-        #    plt.savefig(f"{sys.path[0]}/logs/{self.scenario_name}/topology.png", dpi=100, bbox_inches="tight", pad_inches=0)
-        # else:
         plt.savefig(f"{path}", dpi=100, bbox_inches="tight", pad_inches=0)
-        # plt.gcf().canvas.draw()
         plt.close()
 
     def generate_topology(self):

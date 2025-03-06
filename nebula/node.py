@@ -122,7 +122,7 @@ async def main(config):
             raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
     else:
         raise ValueError(f"Dataset {dataset_name} not supported")
-    
+
     dataset = NebulaPartition(handler=handler, mode="memory", config=config)
     dataset.load_partition()
     dataset.log_partition()
@@ -206,15 +206,9 @@ async def main(config):
     # In order to do that, it should request the current round to the controller
     if additional_node_status:
         logging.info(f"Waiting for round {additional_node_round} to start")
-        time.sleep(6000)  # DEBUG purposes
-        import requests
+        logging.info("Waiting time to start finding federation")
 
-        url = f"http://{node.config.participant['scenario_args']['controller']}/platform/{node.config.participant['scenario_args']['name']}/round"
-        current_round = int(requests.get(url).json()["round"])
-        while current_round < additional_node_round:
-            logging.info(f"Waiting for round {additional_node_round} to start")
-            time.sleep(10)
-        logging.info(f"Round {additional_node_round} started, connecting to the network")
+        await asyncio.sleep(6000)  # DEBUG purposes
 
     if node.cm is not None:
         await node.cm.network_wait()

@@ -733,12 +733,11 @@ def update_topology(scenario_name, nodes_list, nodes_config):
     matrix = np.zeros((len(nodes), len(nodes)))
     for node in nodes_list:
         for neighbour in node[5].split(" "):
-            if neighbour != "":
-                if neighbour in nodes:
-                    matrix[
-                        nodes.index(node[2] + ":" + str(node[3])),
-                        nodes.index(neighbour),
-                    ] = 1
+            if neighbour != "" and neighbour in nodes:
+                matrix[
+                    nodes.index(node[2] + ":" + str(node[3])),
+                    nodes.index(neighbour),
+                ] = 1
     from nebula.addons.topologymanager import TopologyManager
 
     tm = TopologyManager(n_nodes=len(nodes_list), topology=matrix, scenario_name=scenario_name)
@@ -916,7 +915,7 @@ async def nebula_monitor_log_error(scenario_name: str, id: str):
 
 @app.get("/platform/dashboard/{scenario_name}/topology/image/")
 async def nebula_monitor_image(scenario_name: str):
-    topology_image = FileUtils.check_path(settings.log_dir, os.path.join(scenario_name, "topology.png"))
+    topology_image = FileUtils.check_path(settings.config_dir, os.path.join(scenario_name, "topology.png"))
     if os.path.exists(topology_image):
         return FileResponse(topology_image, media_type="image/png")
     else:

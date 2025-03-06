@@ -45,20 +45,20 @@ class NebulaPartitionHandler(Dataset, ABC):
         self.transform = None
         self.target_transform = None
         self.file = None
-        
+
         self.data = None
         self.targets = None
         self.data_shape = None
         self.num_classes = None
         self.length = None
-        
+
         if self.mode == "memory":
             self.load_data()
         elif self.mode == "lazy":
             self.load_data_lazy()
         else:
             raise ValueError(f"Mode {self.mode} not supported")
-        
+
     def load_data(self):
         with h5py.File(self.file_path, "r") as f:
             dset = f[f"{self.prefix}_data"]
@@ -70,7 +70,7 @@ class NebulaPartitionHandler(Dataset, ABC):
         logging_training.info(
             f"[NebulaPartitionHandler - Memory] [{self.prefix}] Loaded {self.length} samples from {self.file_path} with shape {self.data_shape} and {self.num_classes} classes."
         )
-        
+
     def load_data_lazy(self):
         self.file = h5py.File(self.file_path, "r", swmr=True)
         dset = self.file[f"{self.prefix}_data"]
@@ -80,16 +80,16 @@ class NebulaPartitionHandler(Dataset, ABC):
         logging_training.info(
             f"[NebulaPartitionHandler - Lazy] [{self.prefix}] Lazy loaded {self.length} samples from {self.file_path} with shape {self.data_shape} and {self.num_classes} classes."
         )
-        
+
     def close(self):
         if self.file is not None:
             self.file.close()
             self.file = None
             logging_training.info(f"[NebulaPartitionHandler] Closed file {self.file_path}")
-            
+
     def __del__(self):
         self.close()
-        
+
     def __len__(self):
         return self.length
 
@@ -106,7 +106,9 @@ class NebulaPartitionHandler(Dataset, ABC):
                 data = self.file[f"{self.prefix}_data"][idx]
                 target = self.file[f"{self.prefix}_targets"][idx]
             except Exception as e:
-                raise RuntimeError(f"[NebulaPartitionHandler] Error reading index {idx} from file {self.file_path}: {e}")
+                raise RuntimeError(
+                    f"[NebulaPartitionHandler] Error reading index {idx} from file {self.file_path}: {e}"
+                )
 
         return data, target
 
@@ -120,7 +122,7 @@ class NebulaPartition:
         self.handler = handler
         self.mode = mode
         self.config = config
-        
+
         if self.mode not in ["lazy", "memory"]:
             raise ValueError(f"Mode {self.mode} not supported")
 
@@ -276,7 +278,7 @@ class NebulaDataset:
         Initialize the dataset. This should load or create the dataset.
         """
         raise NotImplementedError("Subclasses must implement this method.")
-    
+
     def clear(self):
         """
         Clear the dataset. This should remove or reset the dataset.
@@ -285,7 +287,7 @@ class NebulaDataset:
             self.train_set.close()
         if self.test_set is not None and hasattr(self.test_set, "close"):
             self.test_set.close()
-            
+
         self.train_set = None
         self.train_indices_map = None
         self.test_set = None
@@ -399,7 +401,7 @@ class NebulaDataset:
 
         except Exception as e:
             logging.exception(f"Error in save_partitions: {e}")
-            
+
         finally:
             self.clear()
             logging.info("Cleared dataset after saving partitions.")

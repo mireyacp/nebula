@@ -1,29 +1,18 @@
 import asyncio
 import collections
 import logging
-import os
-import subprocess
 import sys
-import traceback
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 import requests
 
-from nebula.addons.mobility import Mobility
+from nebula.core.eventmanager import EventManager
+from nebula.core.nebulaevents import MessageEvent
 from nebula.core.network.connection import Connection
 from nebula.core.network.discoverer import Discoverer
 from nebula.core.network.forwarder import Forwarder
 from nebula.core.network.messages import MessagesManager
 from nebula.core.network.propagator import Propagator
-from nebula.core.utils.helper import (
-    cosine_metric,
-    euclidean_metric,
-    jaccard_metric,
-    manhattan_metric,
-    minkowski_metric,
-    pearson_correlation_metric,
-)
 from nebula.core.utils.locker import Locker
 
 if TYPE_CHECKING:
@@ -43,7 +32,7 @@ class CommunicationsManager:
         self.register_endpoint = f"http://{self.config.participant['scenario_args']['controller']}/platform/dashboard/{self.config.participant['scenario_args']['name']}/node/register"
         self.wait_endpoint = f"http://{self.config.participant['scenario_args']['controller']}/platform/dashboard/{self.config.participant['scenario_args']['name']}/node/wait"
 
-        self._connections = {}
+        self._connections: dict[str, Connection] = {}
         self.connections_lock = Locker(name="connections_lock", async_lock=True)
         self.connections_manager_lock = Locker(name="connections_manager_lock", async_lock=True)
         self.connection_attempt_lock_incoming = Locker(name="connection_attempt_lock_incoming", async_lock=True)
@@ -64,7 +53,6 @@ class CommunicationsManager:
         # self._health = Health(addr=self.addr, config=self.config, cm=self)
         self._forwarder = Forwarder(config=self.config, cm=self)
         self._propagator = Propagator(cm=self)
-        self._mobility = Mobility(config=self.config, cm=self)
 
         # List of connections to reconnect {addr: addr, tries: 0}
         self.connections_reconnect = []
@@ -104,10 +92,6 @@ class CommunicationsManager:
     def propagator(self):
         return self._propagator
 
-    @property
-    def mobility(self):
-        return self._mobility
-
     async def check_federation_ready(self):
         # Check if all my connections are in ready_connections
         logging.info(
@@ -119,152 +103,42 @@ class CommunicationsManager:
     async def add_ready_connection(self, addr):
         self.ready_connections.add(addr)
 
-    def get_messages_events(self):
-        return self.mm.get_messages_events()
-
-    # def stop_logging(self):
-    #     logging.getLogger().disabled = True
+    """
+    ##############################
+    #    PROCESSING MESSAGES     #
+    ##############################
+    """
 
     async def handle_incoming_message(self, data, addr_from):
         await self.mm.process_message(data, addr_from)
 
     async def forward_message(self, data, addr_from):
+        logging.info("Forwarding message... ")
         await self.forwarder.forward(data, addr_from=addr_from)
 
     async def handle_message(self, message_event):
-        await self.engine.trigger_event(message_event)
+        asyncio.create_task(EventManager.get_instance().publish(message_event))
 
     async def handle_model_message(self, source, message):
         logging.info(f"🤖  handle_model_message | Received model from {source} with round {message.round}")
-        if self.get_round() is not None:
-            await self.engine.get_round_lock().acquire_async()
-            current_round = self.get_round()
-            await self.engine.get_round_lock().release_async()
-
-            if message.round != current_round and message.round != -1:
-                logging.info(
-                    f"❗️  handle_model_message | Received a model from a different round | Model round: {message.round} | Current round: {current_round}"
-                )
-                if message.round > current_round:
-                    logging.info(
-                        f"🤖  handle_model_message | Saving model from {source} for future round {message.round}"
-                    )
-                    await self.engine.aggregator.include_next_model_in_buffer(
-                        message.parameters,
-                        message.weight,
-                        source=source,
-                        round=message.round,
-                    )
-                else:
-                    logging.info(f"❗️  handle_model_message | Ignoring model from {source} from a previous round")
-                return
-            if not self.engine.get_federation_ready_lock().locked() and len(self.engine.get_federation_nodes()) == 0:
-                logging.info("🤖  handle_model_message | There are no defined federation nodes")
-                return
-            try:
-                # get_federation_ready_lock() is locked when the model is being initialized (first round)
-                # non-starting nodes receive the initialized model from the starting node
-                if not self.engine.get_federation_ready_lock().locked() or self.engine.get_initialization_status():
-                    decoded_model = self.engine.trainer.deserialize_model(message.parameters)
-                    if self.config.participant["adaptive_args"]["model_similarity"]:
-                        logging.info("🤖  handle_model_message | Checking model similarity")
-                        cosine_value = cosine_metric(
-                            self.engine.trainer.get_model_parameters(),
-                            decoded_model,
-                            similarity=True,
-                        )
-                        euclidean_value = euclidean_metric(
-                            self.engine.trainer.get_model_parameters(),
-                            decoded_model,
-                            similarity=True,
-                        )
-                        minkowski_value = minkowski_metric(
-                            self.engine.trainer.get_model_parameters(),
-                            decoded_model,
-                            p=2,
-                            similarity=True,
-                        )
-                        manhattan_value = manhattan_metric(
-                            self.engine.trainer.get_model_parameters(),
-                            decoded_model,
-                            similarity=True,
-                        )
-                        pearson_correlation_value = pearson_correlation_metric(
-                            self.engine.trainer.get_model_parameters(),
-                            decoded_model,
-                            similarity=True,
-                        )
-                        jaccard_value = jaccard_metric(
-                            self.engine.trainer.get_model_parameters(),
-                            decoded_model,
-                            similarity=True,
-                        )
-                        with open(
-                            f"{self.log_dir}/participant_{self.idx}_similarity.csv",
-                            "a+",
-                        ) as f:
-                            if os.stat(f"{self.log_dir}/participant_{self.idx}_similarity.csv").st_size == 0:
-                                f.write(
-                                    "timestamp,source_ip,nodes,round,current_round,cosine,euclidean,minkowski,manhattan,pearson_correlation,jaccard\n"
-                                )
-                            f.write(
-                                f"{datetime.now()}, {source}, {message.round}, {current_round}, {cosine_value}, {euclidean_value}, {minkowski_value}, {manhattan_value}, {pearson_correlation_value}, {jaccard_value}\n"
-                            )
-
-                    await self.engine.aggregator.include_model_in_buffer(
-                        decoded_model,
-                        message.weight,
-                        source=source,
-                        round=message.round,
-                    )
-
-                else:
-                    if message.round != -1:
-                        # Be sure that the model message is from the initialization round (round = -1)
-                        logging.info(
-                            f"🤖  handle_model_message | Saving model from {source} for future round {message.round}"
-                        )
-                        await self.engine.aggregator.include_next_model_in_buffer(
-                            message.parameters,
-                            message.weight,
-                            source=source,
-                            round=message.round,
-                        )
-                        return
-                    logging.info(f"🤖  handle_model_message | Initializing model (executed by {source})")
-                    try:
-                        model = self.engine.trainer.deserialize_model(message.parameters)
-                        self.engine.trainer.set_model_parameters(model, initialize=True)
-                        logging.info("🤖  handle_model_message | Model Parameters Initialized")
-                        self.engine.set_initialization_status(True)
-                        await (
-                            self.engine.get_federation_ready_lock().release_async()
-                        )  # Enable learning cycle once the initialization is done
-                        try:
-                            await (
-                                self.engine.get_federation_ready_lock().release_async()
-                            )  # Release the lock acquired at the beginning of the engine
-                        except RuntimeError:
-                            pass
-                    except RuntimeError:
-                        pass
-
-            except Exception as e:
-                logging.exception(f"🤖  handle_model_message | Unknown error adding model: {e}")
-                logging.exception(traceback.format_exc())
-
+        if message.round == -1:
+            model_init_event = MessageEvent(("model", "initialization"), source, message)
+            asyncio.create_task(EventManager.get_instance().publish(model_init_event))
         else:
-            logging.info("🤖  handle_model_message | Tried to add a model while learning is not running")
-            if message.round != -1:
-                # Be sure that the model message is from the initialization round (round = -1)
-                logging.info(f"🤖  handle_model_message | Saving model from {source} for future round {message.round}")
-                await self.engine.aggregator.include_next_model_in_buffer(
-                    message.parameters,
-                    message.weight,
-                    source=source,
-                    round=message.round,
-                )
-        return
+            model_updt_event = MessageEvent(("model", "update"), source, message)
+            asyncio.create_task(EventManager.get_instance().publish(model_updt_event))
+
+    def create_message(self, message_type: str, action: str = "", *args, **kwargs):
+        return self.mm.create_message(message_type, action, *args, **kwargs)
+
+    def get_messages_events(self):
+        return self.mm.get_messages_events()
+
+    """
+    ##############################
+    #    OTHER FUNCTIONALITIES   #
+    ##############################
+    """
 
     def get_connections_lock(self):
         return self.connections_lock
@@ -298,6 +172,7 @@ class CommunicationsManager:
         async def process_connection(reader, writer):
             try:
                 addr = writer.get_extra_info("peername")
+
                 connected_node_id = await reader.readline()
                 connected_node_id = connected_node_id.decode("utf-8").strip()
                 connected_node_port = addr[1]
@@ -306,7 +181,7 @@ class CommunicationsManager:
                 connection_addr = f"{addr[0]}:{connected_node_port}"
                 direct = await reader.readline()
                 direct = direct.decode("utf-8").strip()
-                direct = True if direct == "True" else False
+                direct = direct == "True"
                 logging.info(
                     f"🔗  [incoming] Connection from {addr} - {connection_addr} [id {connected_node_id} | port {connected_node_port} | direct {direct}] (incoming)"
                 )
@@ -422,137 +297,25 @@ class CommunicationsManager:
                 connection["tries"] += 1
                 await self.connect(connection["addr"])
 
+    def verify_any_connections(self, neighbors):
+        # Return True if any neighbors are connected
+        return bool(any(neighbor in self.connections for neighbor in neighbors))
+
     def verify_connections(self, neighbors):
         # Return True if all neighbors are connected
-        if all(neighbor in self.connections for neighbor in neighbors):
-            return True
-        return False
+        return bool(all(neighbor in self.connections for neighbor in neighbors))
 
     async def network_wait(self):
         await self.stop_network_engine.wait()
 
     async def deploy_additional_services(self):
         logging.info("🌐  Deploying additional services...")
-        self._generate_network_conditions()
         await self._forwarder.start()
-        if self.config.participant["mobility_args"]["mobility"]:
-            await self._discoverer.start()
+        if self.config.participant["mobility_args"]["mobility"] and self.config.participant["network_args"]["simulation"]:
+                pass
+            # await self._discoverer.start()
         # await self._health.start()
         self._propagator.start()
-        await self._mobility.start()
-
-    def _generate_network_conditions(self):
-        # TODO: Implement selection of network conditions from frontend
-        if self.config.participant["network_args"]["simulation"]:
-            interface = self.config.participant["network_args"]["interface"]
-            bandwidth = self.config.participant["network_args"]["bandwidth"]
-            delay = self.config.participant["network_args"]["delay"]
-            delay_distro = self.config.participant["network_args"]["delay-distro"]
-            delay_distribution = self.config.participant["network_args"]["delay-distribution"]
-            loss = self.config.participant["network_args"]["loss"]
-            duplicate = self.config.participant["network_args"]["duplicate"]
-            corrupt = self.config.participant["network_args"]["corrupt"]
-            reordering = self.config.participant["network_args"]["reordering"]
-            logging.info(
-                f"🌐  Network simulation is enabled | Interface: {interface} | Bandwidth: {bandwidth} | Delay: {delay} | Delay Distro: {delay_distro} | Delay Distribution: {delay_distribution} | Loss: {loss} | Duplicate: {duplicate} | Corrupt: {corrupt} | Reordering: {reordering}"
-            )
-            try:
-                results = subprocess.run(
-                    [
-                        "tcset",
-                        str(interface),
-                        "--rate",
-                        str(bandwidth),
-                        "--delay",
-                        str(delay),
-                        "--delay-distro",
-                        str(delay_distro),
-                        "--delay-distribution",
-                        str(delay_distribution),
-                        "--loss",
-                        str(loss),
-                        "--duplicate",
-                        str(duplicate),
-                        "--corrupt",
-                        str(corrupt),
-                        "--reordering",
-                        str(reordering),
-                    ],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-            except Exception as e:
-                logging.exception(f"🌐  Network simulation error: {e}")
-                return
-        else:
-            logging.info("🌐  Network simulation is disabled. Using default network conditions...")
-
-    def _reset_network_conditions(self):
-        interface = self.config.participant["network_args"]["interface"]
-        logging.info("🌐  Resetting network conditions")
-        try:
-            results = subprocess.run(
-                ["tcdel", str(interface), "--all"],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-        except Exception as e:
-            logging.exception(f"❗️  Network simulation error: {e}")
-            return
-
-    def _set_network_conditions(
-        self,
-        interface="eth0",
-        network="192.168.50.2",
-        bandwidth="5Gbps",
-        delay="0ms",
-        delay_distro="0ms",
-        delay_distribution="normal",
-        loss="0%",
-        duplicate="0%",
-        corrupt="0%",
-        reordering="0%",
-    ):
-        logging.info(
-            f"🌐  Changing network conditions | Interface: {interface} | Network: {network} | Bandwidth: {bandwidth} | Delay: {delay} | Delay Distro: {delay_distro} | Delay Distribution: {delay_distribution} | Loss: {loss} | Duplicate: {duplicate} | Corrupt: {corrupt} | Reordering: {reordering}"
-        )
-        try:
-            results = subprocess.run(
-                [
-                    "tcset",
-                    str(interface),
-                    "--network",
-                    str(network) if network is not None else "",
-                    "--rate",
-                    str(bandwidth),
-                    "--delay",
-                    str(delay),
-                    "--delay-distro",
-                    str(delay_distro),
-                    "--delay-distribution",
-                    str(delay_distribution),
-                    "--loss",
-                    str(loss),
-                    "--duplicate",
-                    str(duplicate),
-                    "--corrupt",
-                    str(corrupt),
-                    "--reordering",
-                    str(reordering),
-                    "--change",
-                ],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-        except Exception as e:
-            logging.exception(f"❗️  Network simulation error: {e}")
-            return
 
     async def include_received_message_hash(self, hash_message):
         try:
@@ -601,11 +364,24 @@ class CommunicationsManager:
                 logging.info(
                     f"Sending model to {dest_addr} with round {round}: weight={weight} | size={sys.getsizeof(serialized_model) / (1024** 2) if serialized_model is not None else 0} MB"
                 )
-                # message = self.mm.generate_model_message(round, serialized_model, weight)
                 parameters = serialized_model
-                message = self.mm.create_message("model", "", round, parameters, weight)
+                message = self.create_message("model", "", round, parameters, weight)
                 await conn.send(data=message, is_compressed=True)
                 logging.info(f"Model sent to {dest_addr} with round {round}")
+            except Exception as e:
+                logging.exception(f"❗️  Cannot send model to {dest_addr}: {e!s}")
+                await self.disconnect(dest_addr, mutual_disconnection=False)
+
+    async def send_offer_model(self, dest_addr, offer_message):
+        async with self.semaphore_send_model:
+            try:
+                conn = self.connections.get(dest_addr)
+                if conn is None:
+                    logging.info(f"❗️  Connection with {dest_addr} not found")
+                    return
+                logging.info(f"Sending offer model to {dest_addr}")
+                await conn.send(data=offer_message, is_compressed=True)
+                logging.info(f"Offer_Model sent to {dest_addr}")
             except Exception as e:
                 logging.exception(f"❗️  Cannot send model to {dest_addr}: {e!s}")
                 await self.disconnect(dest_addr, mutual_disconnection=False)
@@ -624,7 +400,11 @@ class CommunicationsManager:
                 async with self.connections_manager_lock:
                     if addr in self.connections:
                         logging.info(f"🔗  [outgoing] Already connected with {self.connections[addr]}")
-                        return False
+                        if not self.connections[addr].get_direct() and (direct is True):
+                            self.connections[addr].set_direct(direct)
+                            return True
+                        else:
+                            return False
                     if addr in self.pending_connections:
                         logging.info(f"🔗  [outgoing] Connection with {addr} is already pending")
                         if int(self.host.split(".")[3]) >= int(host.split(".")[3]):
@@ -748,7 +528,7 @@ class CommunicationsManager:
 
     async def connect(self, addr, direct=True):
         await self.get_connections_lock().acquire_async()
-        duplicated = addr in self.connections.keys()
+        duplicated = addr in self.connections
         await self.get_connections_lock().release_async()
         if duplicated:
             if direct:  # Upcoming direct connection
@@ -786,28 +566,44 @@ class CommunicationsManager:
                 logging.info("Waiting for controller signal...")
             await asyncio.sleep(1)
 
-    async def disconnect(self, dest_addr, mutual_disconnection=True):
+    async def disconnect(self, dest_addr, mutual_disconnection=True, forced=False):
+        removed = False
+
         logging.info(f"Trying to disconnect {dest_addr}")
         if dest_addr not in self.connections:
             logging.info(f"Connection {dest_addr} not found")
             return
         try:
             if mutual_disconnection:
-                await self.connections[dest_addr].send(
-                    # data=self.mm.generate_connection_message(nebula_pb2.ConnectionMessage.Action.DISCONNECT)
-                    data=self.create_message("connection", "disconnect")
-                )
+                await self.connections[dest_addr].send(data=self.create_message("connection", "disconnect"))
                 await asyncio.sleep(1)
                 self.connections[dest_addr].stop()
         except Exception as e:
             logging.exception(f"❗️  Error while disconnecting {dest_addr}: {e!s}")
         if dest_addr in self.connections:
             logging.info(f"Removing {dest_addr} from connections")
-            del self.connections[dest_addr]
+            # del self.connections[dest_addr]
+            try:
+                removed = True
+                await self.connections[dest_addr].stop()
+                del self.connections[dest_addr]
+            except Exception as e:
+                logging.exception(f"❗️  Error while removing connection {dest_addr}: {e!s}")
         current_connections = await self.get_all_addrs_current_connections(only_direct=True)
         current_connections = set(current_connections)
         logging.info(f"Current connections: {current_connections}")
         self.config.update_neighbors_from_config(current_connections, dest_addr)
+        if removed:
+            current_connections = await self.get_addrs_current_connections(only_direct=True, myself=True)
+            await self.engine.update_neighbors(dest_addr, current_connections, remove=removed)
+
+    async def remove_temporary_connection(self, temp_addr):
+        logging.info(f"Removing temporary conneciton:{temp_addr}..")
+        try:
+            await self.get_connections_lock().acquire_async()
+            self.connections.pop(temp_addr, None)
+        finally:
+            await self.get_connections_lock().release_async()
 
     async def get_all_addrs_current_connections(self, only_direct=False, only_undirected=False):
         try:
@@ -866,10 +662,13 @@ class CommunicationsManager:
                     conn.get_neighbor_distance() if conn.get_neighbor_distance() is not None else float("inf")
                 ),
             )
-            if top == 1:
-                return sorted_connections[0]
+            if sorted_connections:
+                if top == 1:
+                    return sorted_connections[0]
+                else:
+                    return sorted_connections[:top]
             else:
-                return sorted_connections[:top]
+                return None
         finally:
             await self.get_connections_lock().release_async()
 

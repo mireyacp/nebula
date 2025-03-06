@@ -1,14 +1,17 @@
 import asyncio
 import logging
 import os
+import time
 
 import docker
 
 from nebula.addons.attacks.attacks import create_attack
 from nebula.addons.functions import print_msg_box
 from nebula.addons.reporter import Reporter
+from nebula.core.addonmanager import AddonManager
 from nebula.core.aggregation.aggregator import create_aggregator, create_target_aggregator
 from nebula.core.eventmanager import EventManager
+from nebula.core.nebulaevents import AggregationEvent, RoundStartEvent, UpdateNeighborEvent, UpdateReceivedEvent
 from nebula.core.network.communications import CommunicationsManager
 from nebula.core.utils.locker import Locker
 
@@ -16,6 +19,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("fsspec").setLevel(logging.WARNING)
 logging.getLogger("matplotlib").setLevel(logging.ERROR)
+logging.getLogger("aim").setLevel(logging.ERROR)
 logging.getLogger("plotly").setLevel(logging.ERROR)
 
 import pdb
@@ -98,7 +102,7 @@ class Engine:
         self._aggregator = create_aggregator(config=self.config, engine=self)
 
         self._secure_neighbors = []
-        self._is_malicious = True if self.config.participant["adversarial_args"]["attacks"] != "No Attack" else False
+        self._is_malicious = self.config.participant["adversarial_args"]["attacks"] != "No Attack"
 
         msg = f"Trainer: {self._trainer.__class__.__name__}"
         msg += f"\nDataset: {self.config.participant['data_args']['dataset']}"
@@ -138,19 +142,9 @@ class Engine:
 
         self._reporter = Reporter(config=self.config, trainer=self.trainer, cm=self.cm)
 
-        self._event_manager = EventManager(
-            # default_callbacks=[
-            #     self._discovery_discover_callback,
-            #     self._control_alive_callback,
-            #     self._connection_connect_callback,
-            #     self._connection_disconnect_callback,
-            #     # self._federation_ready_callback,
-            #     # self._start_federation_callback,
-            #     # self._federation_models_included_callback,
-            # ]
-        )
+        self.trainning_in_progress_lock = Locker(name="trainning_in_progress_lock", async_lock=True)
 
-        self.register_message_events_callbacks()
+        self._addon_manager = AddonManager(self, self.config)
 
     @property
     def cm(self):
@@ -159,10 +153,6 @@ class Engine:
     @property
     def reporter(self):
         return self._reporter
-
-    @property
-    def event_manager(self):
-        return self._event_manager
 
     @property
     def aggregator(self):
@@ -199,28 +189,56 @@ class Engine:
     def get_federation_setup_lock(self):
         return self.federation_setup_lock
 
+    def get_trainning_in_progress_lock(self):
+        return self.trainning_in_progress_lock
+
     def get_round_lock(self):
         return self.round_lock
 
-    def register_message_events_callbacks(self):
-        me_dict = self.cm.get_messages_events()
-        message_events = [
-            (message_name, message_action)
-            for (message_name, message_actions) in me_dict.items()
-            for message_action in message_actions
-        ]
-        logging.info(f"{message_events}")
-        for event_type, action in message_events:
-            callback_name = f"_{event_type}_{action}_callback"
-            logging.info(f"Searching callback named: {callback_name}")
-            method = getattr(self, callback_name, None)
+    def set_round(self, new_round):
+        logging.info(f"🤖  Update round count | from: {self.round} | to round: {new_round}")
+        self.round = new_round
+        self.trainer.set_current_round(new_round)
 
-            if callable(method):
-                self.event_manager.subscribe((event_type, action), method)
+    """
+    ##############################
+    #       MODEL CALLBACKS      #
+    ##############################
+    """
 
-    async def trigger_event(self, message_event):
-        logging.info(f"Publishing MessageEvent: {message_event.message_type}")
-        await self.event_manager.publish(message_event)
+    async def model_initialization_callback(self, source, message):
+        logging.info(f"🤖  handle_model_message | Received model initialization from {source}")
+        try:
+            model = self.trainer.deserialize_model(message.parameters)
+            self.trainer.set_model_parameters(model, initialize=True)
+            logging.info("🤖  Init Model | Model Parameters Initialized")
+            self.set_initialization_status(True)
+            await (
+                self.get_federation_ready_lock().release_async()
+            )  # Enable learning cycle once the initialization is done
+            try:
+                await (
+                    self.get_federation_ready_lock().release_async()
+                )  # Release the lock acquired at the beginning of the engine
+            except RuntimeError:
+                pass
+        except RuntimeError:
+            pass
+
+    async def model_update_callback(self, source, message):
+        logging.info(f"🤖  handle_model_message | Received model update from {source} with round {message.round}")
+        if not self.get_federation_ready_lock().locked() and len(self.get_federation_nodes()) == 0:
+            logging.info("🤖  handle_model_message | There are no defined federation nodes")
+            return
+        decoded_model = self.trainer.deserialize_model(message.parameters)
+        updt_received_event = UpdateReceivedEvent(decoded_model, message.weight, source, message.round)
+        await EventManager.get_instance().publish_node_event(updt_received_event)
+
+    """
+    ##############################
+    #      General callbacks     #
+    ##############################
+    """
 
     async def _discovery_discover_callback(self, source, message):
         logging.info(
@@ -265,6 +283,11 @@ class Engine:
 
     async def _connection_disconnect_callback(self, source, message):
         logging.info(f"🔗  handle_connection_message | Trigger | Received disconnection message from {source}")
+        if self.mobility:
+            if await self.nm.waiting_confirmation_from(source):
+                await self.nm.confirmation_received(source, confirmation=False)
+            # if source in await self.cm.get_all_addrs_current_connections(only_direct=True):
+            await self.nm.update_neighbors(source, remove=True)
         await self.cm.disconnect(source, mutual_disconnection=False)
 
     async def _federation_federation_ready_callback(self, source, message):
@@ -277,7 +300,7 @@ class Engine:
         logging.info(f"📝  handle_federation_message | Trigger | Received start federation message from {source}")
         await self.create_trainer_module()
 
-    async def _reputation_callback(self, source, message):
+    async def _federation_reputation_callback(self, source, message):
         malicious_nodes = message.arguments  # List of malicious nodes
         if self.with_reputation and len(malicious_nodes) > 0 and not self._is_malicious:
             if self.is_dynamic_topology:
@@ -308,11 +331,70 @@ class Engine:
         finally:
             await self.cm.get_connections_lock().release_async()
 
+    """
+    ##############################
+    #    REGISTERING CALLBACKS   #
+    ##############################
+    """
+
+    async def register_events_callbacks(self):
+        await self.init_message_callbacks()
+        await EventManager.get_instance().subscribe_node_event(AggregationEvent, self.broadcast_models_include)
+
+    async def init_message_callbacks(self):
+        logging.info("Registering callbacks for MessageEvents...")
+        await self.register_message_events_callbacks()
+        # Additional callbacks not registered automatically
+        await self.register_message_callback(("model", "initialization"), "model_initialization_callback")
+        await self.register_message_callback(("model", "update"), "model_update_callback")
+
+    async def register_message_events_callbacks(self):
+        me_dict = self.cm.get_messages_events()
+        message_events = [
+            (message_name, message_action)
+            for (message_name, message_actions) in me_dict.items()
+            for message_action in message_actions
+        ]
+        # logging.info(f"{message_events}")
+        for event_type, action in message_events:
+            callback_name = f"_{event_type}_{action}_callback"
+            # logging.info(f"Searching callback named: {callback_name}")
+            method = getattr(self, callback_name, None)
+
+            if callable(method):
+                await EventManager.get_instance().subscribe((event_type, action), method)
+
+    async def register_message_callback(self, message_event: tuple[str, str], callback: str):
+        event_type, action = message_event
+        method = getattr(self, callback, None)
+        if callable(method):
+            await EventManager.get_instance().subscribe((event_type, action), method)
+
+    """
+    ##############################
+    #    ENGINE FUNCTIONALITY    #
+    ##############################
+    """
+
+    async def update_neighbors(self, removed_neighbor_addr, neighbors, remove=False):
+        self.federation_nodes = neighbors
+        updt_nei_event = UpdateNeighborEvent(removed_neighbor_addr, remove)
+        asyncio.create_task(EventManager.get_instance().publish_node_event(updt_nei_event))
+
+    async def broadcast_models_include(self, age: AggregationEvent):
+        logging.info(f"🔄  Broadcasting MODELS_INCLUDED for round {self.get_round()}")
+        message = self.cm.create_message(
+            "federation", "federation_models_included", [str(arg) for arg in [self.get_round()]]
+        )
+        asyncio.create_task(self.cm.send_message_to_neighbors(message))
+
     async def create_trainer_module(self):
         asyncio.create_task(self._start_learning())
         logging.info("Started trainer module...")
 
     async def start_communications(self):
+        await self.register_events_callbacks()
+        await self.aggregator.init()
         logging.info(f"Neighbors: {self.config.participant['network_args']['neighbors']}")
         logging.info(
             f"💤  Cold start time: {self.config.participant['misc_args']['grace_time_connection']} seconds before connecting to the network"
@@ -330,6 +412,7 @@ class Engine:
         logging.info(f"Connections verified: {current_connections}")
         await self._reporter.start()
         await self.cm.deploy_additional_services()
+        await self._addon_manager.deploy_additional_services()
         await asyncio.sleep(self.config.participant["misc_args"]["grace_time_connection"] // 2)
 
     async def deploy_federation(self):
@@ -343,17 +426,16 @@ class Engine:
                 while not await self.cm.check_federation_ready():
                     await asyncio.sleep(1)
                 logging.info("Sending FEDERATION_START to neighbors...")
-                # message = self.cm.mm.generate_federation_message(nebula_pb2.FederationMessage.Action.FEDERATION_START)
                 message = self.cm.create_message("federation", "federation_start")
                 await self.cm.send_message_to_neighbors(message)
                 await self.get_federation_ready_lock().release_async()
                 await self.create_trainer_module()
+                self.set_initialization_status(True)
             else:
                 logging.info("Federation already started")
 
         else:
             logging.info("Sending FEDERATION_READY to neighbors...")
-            # message = self.cm.mm.generate_federation_message(nebula_pb2.FederationMessage.Action.FEDERATION_READY)
             message = self.cm.create_message("federation", "federation_ready")
             await self.cm.send_message_to_neighbors(message)
             logging.info("💤  Waiting until receiving the start signal from the start node")
@@ -453,11 +535,21 @@ class Engine:
         else:
             logging.error("Aggregation finished with no parameters")
 
+    def print_round_information(self):
+        print_msg_box(
+            msg=f"Round {self.round} of {self.total_rounds} started.",
+            indent=2,
+            title="Round information",
+        )
+
     def learning_cycle_finished(self):
         return not (self.round < self.total_rounds)
 
     async def _learning_cycle(self):
         while self.round is not None and self.round < self.total_rounds:
+            current_time = time.time()
+            rse = RoundStartEvent(self.round, current_time)
+            await EventManager.get_instance().publish_node_event(rse)
             print_msg_box(
                 msg=f"Round {self.round} of {self.total_rounds - 1} started (max. {self.total_rounds} rounds)",
                 indent=2,
@@ -479,7 +571,7 @@ class Engine:
                 indent=2,
                 title="Round information",
             )
-            await self.aggregator.reset()
+            # await self.aggregator.reset()
             self.trainer.on_round_end()
             self.round += 1
             self.config.participant["federation_args"]["round"] = (
@@ -621,14 +713,14 @@ class AggregatorNode(Engine):
     async def _extended_learning_cycle(self):
         # Define the functionality of the aggregator node
         await self.trainer.test()
+        await self.trainning_in_progress_lock.acquire_async()
         await self.trainer.train()
+        await self.trainning_in_progress_lock.release_async()
 
-        await self.aggregator.include_model_in_buffer(
-            self.trainer.get_model_parameters(),
-            self.trainer.get_model_weight(),
-            source=self.addr,
-            round=self.round,
+        self_update_event = UpdateReceivedEvent(
+            self.trainer.get_model_parameters(), self.trainer.get_model_weight(), self.addr, self.round
         )
+        await EventManager.get_instance().publish_node_event(self_update_event)
 
         await self.cm.propagator.propagate("stable")
         await self._waiting_model_updates()
@@ -655,13 +747,11 @@ class ServerNode(Engine):
         # Define the functionality of the server node
         await self.trainer.test()
 
-        # In the first round, the server node doest take into account the initial model parameters for the aggregation
-        await self.aggregator.include_model_in_buffer(
-            self.trainer.get_model_parameters(),
-            self.trainer.BYPASS_MODEL_WEIGHT,
-            source=self.addr,
-            round=self.round,
+        self_update_event = UpdateReceivedEvent(
+            self.trainer.get_model_parameters(), self.trainer.BYPASS_MODEL_WEIGHT, self.addr, self.round
         )
+        await EventManager.get_instance().publish_node_event(self_update_event)
+
         await self._waiting_model_updates()
         await self.cm.propagator.propagate("stable")
 
@@ -686,18 +776,14 @@ class TrainerNode(Engine):
     async def _extended_learning_cycle(self):
         # Define the functionality of the trainer node
         logging.info("Waiting global update | Assign _waiting_global_update = True")
-        self.aggregator.set_waiting_global_update()
 
         await self.trainer.test()
         await self.trainer.train()
 
-        await self.aggregator.include_model_in_buffer(
-            self.trainer.get_model_parameters(),
-            self.trainer.get_model_weight(),
-            source=self.addr,
-            round=self.round,
-            local=True,
+        self_update_event = UpdateReceivedEvent(
+            self.trainer.get_model_parameters(), self.trainer.get_model_weight(), self.addr, self.round, local=True
         )
+        await EventManager.get_instance().publish_node_event(self_update_event)
 
         await self.cm.propagator.propagate("stable")
         await self._waiting_model_updates()
@@ -723,5 +809,4 @@ class IdleNode(Engine):
     async def _extended_learning_cycle(self):
         # Define the functionality of the idle node
         logging.info("Waiting global update | Assign _waiting_global_update = True")
-        self.aggregator.set_waiting_global_update()
         await self._waiting_model_updates()

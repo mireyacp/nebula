@@ -163,8 +163,31 @@ class Propagator:
         for neighbor_addr in eligible_neighbors:
             asyncio.create_task(self.cm.send_model(neighbor_addr, round_number, serialized_model, weight))
 
-        if len(self.aggregator.get_nodes_pending_models_to_aggregate()) >= len(self.aggregator._federation_nodes):
-            return False
+        # if len(self.aggregator.get_nodes_pending_models_to_aggregate()) >= len(self.aggregator._federation_nodes):
+        #     return False
 
         await asyncio.sleep(self.interval)
         return True
+
+    async def get_model_information(self, dest_addr, strategy_id: str, init=False):
+        if not init:
+            if strategy_id not in self.strategies:
+                logging.info(f"Strategy {strategy_id} not found.")
+                return None
+            if self.get_round() is None:
+                logging.info("Propagation halted: round is not set.")
+                return None
+
+        strategy = self.strategies[strategy_id]
+        logging.info(f"Preparing model information with strategy to make an offer: {strategy_id}")
+
+        model_params, weight = strategy.prepare_model_payload(None)
+        rounds = self.engine.total_rounds
+
+        if model_params:
+            serialized_model = (
+                model_params if isinstance(model_params, bytes) else self.trainer.serialize_model(model_params)
+            )
+            return (serialized_model, rounds, self.get_round())
+
+        return None

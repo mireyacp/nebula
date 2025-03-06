@@ -377,6 +377,7 @@ class ScenarioManagement:
             participant_config["mobility_args"]["scheme_mobility"] = self.scenario.scheme_mobility
             participant_config["mobility_args"]["round_frequency"] = self.scenario.round_frequency
             participant_config["reporter_args"]["report_status_data_queue"] = self.scenario.report_status_data_queue
+            participant_config["mobility_args"]["topology_type"] = self.scenario.topology
 
             with open(participant_file, "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)
@@ -465,11 +466,14 @@ class ScenarioManagement:
         # Update participants configuration
         is_start_node = False
         config_participants = []
+        # ap = len(additional_participants) if additional_participants else 0
+        additional_nodes = len(additional_participants) if additional_participants else 0
+        logging.info(f"######## nodes: {self.n_nodes} + additionals: {additional_nodes} ######")
         for i in range(self.n_nodes):
             with open(f"{self.config_dir}/participant_" + str(i) + ".json") as f:
                 participant_config = json.load(f)
             participant_config["scenario_args"]["federation"] = self.scenario.federation
-            participant_config["scenario_args"]["n_nodes"] = self.n_nodes
+            participant_config["scenario_args"]["n_nodes"] = self.n_nodes + additional_nodes
             participant_config["network_args"]["neighbors"] = self.topologymanager.get_neighbors_string(i)
             participant_config["scenario_args"]["name"] = self.scenario_name
             participant_config["scenario_args"]["start_time"] = self.start_date_scenario
@@ -520,7 +524,7 @@ class ScenarioManagement:
 
         # Add role to the topology (visualization purposes)
         self.topologymanager.update_nodes(config_participants)
-        self.topologymanager.draw_graph(path=f"{self.log_dir}/{self.scenario_name}/topology.png", plot=False)
+        self.topologymanager.draw_graph(path=f"{self.config_dir}/topology.png", plot=False)
 
         # Include additional participants (if any) as copies of the last participant
         additional_participants_files = []
@@ -535,14 +539,19 @@ class ScenarioManagement:
                 with open(additional_participant_file) as f:
                     participant_config = json.load(f)
 
-                participant_config["scenario_args"]["n_nodes"] = self.n_nodes + i + 1
+                logging.info(f"Configuration | additional nodes |  participant: {self.n_nodes + i + 1}")
+                last_ip = participant_config["network_args"]["ip"]
+                logging.info(f"Valores de la ultima ip: ({last_ip})")
+                participant_config["scenario_args"]["n_nodes"] = self.n_nodes + additional_nodes  # self.n_nodes + i + 1
                 participant_config["device_args"]["idx"] = last_participant_index + i
                 participant_config["network_args"]["neighbors"] = ""
                 participant_config["network_args"]["ip"] = (
                     participant_config["network_args"]["ip"].rsplit(".", 1)[0]
                     + "."
-                    + str(int(participant_config["network_args"]["ip"].rsplit(".", 1)[1]) + 1)
+                    + str(int(participant_config["network_args"]["ip"].rsplit(".", 1)[1]) + i + 1)
                 )
+                ip = str(participant_config["network_args"]["ip"])
+                logging.info(f"El valor almacenado en json es: {ip}")
                 participant_config["device_args"]["uid"] = hashlib.sha1(
                     (
                         str(participant_config["network_args"]["ip"])
@@ -552,6 +561,9 @@ class ScenarioManagement:
                 ).hexdigest()
                 participant_config["mobility_args"]["additional_node"]["status"] = True
                 participant_config["mobility_args"]["additional_node"]["round_start"] = additional_participant["round"]
+
+                # used for late creation nodes
+                participant_config["mobility_args"]["late_creation"] = True
 
                 with open(additional_participant_file, "w") as f:
                     json.dump(participant_config, f, sort_keys=False, indent=2)
