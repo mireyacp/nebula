@@ -11,7 +11,12 @@ src = root / "nebula"
 
 print(f"Generating API pages from {src}")
 
+excluded_dirs = ["tests", "utils", "config"]
+
 for path in sorted(src.rglob("*.py")):
+    if any(excluded in path.parts for excluded in excluded_dirs):
+        print(f"Skipping excluded directory: {path}")
+        continue
     print(f"Generating API page for {path}")
     module_path = path.relative_to(src).with_suffix("")
     print(f"Module path: {module_path}")

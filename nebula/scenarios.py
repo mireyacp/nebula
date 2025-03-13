@@ -27,6 +27,10 @@ from nebula.utils import DockerUtils, FileUtils
 
 # Definition of a scenario
 class Scenario:
+    """
+    Class to define a scenario for the NEBULA platform.
+    It contains all the parameters needed to create a scenario and run it on the platform.
+    """
     def __init__(
         self,
         scenario_title,

@@ -48,6 +48,31 @@ from nebula.core.training.siamese import Siamese
 
 
 async def main(config):
+    """
+    Main function to start the NEBULA node.
+
+    This function initiates the NEBULA core component deployed on each federation participant.
+    It configures the node using the provided configuration object, setting up dataset partitions,
+    selecting and initializing the appropriate model and data handler, and establishing training
+    mechanisms. Additionally, it adjusts specific node parameters (such as indices and timing intervals)
+    based on the participant's configuration, and deploys the node's network communications for
+    federated learning.
+
+    Parameters:
+        config (Config): Configuration object containing settings for:
+            - scenario (including federation and deployment parameters),
+            - model selection and its corresponding hyperparameters,
+            - dataset and data partitioning,
+            - training strategy and related arguments,
+            - device roles and security flags.
+
+    Raises:
+        ValueError: If an unsupported model, dataset, or device role is specified.
+        NotImplementedError: If an unsupported training strategy (e.g., "scikit") is requested.
+
+    Returns:
+        Coroutine that initializes and starts the NEBULA node.
+    """
     n_nodes = config.participant["scenario_args"]["n_nodes"]
     model_name = config.participant["model_args"]["model"]
     idx = config.participant["device_args"]["idx"]
