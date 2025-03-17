@@ -1,5 +1,7 @@
+import math
 import os
 from abc import ABC, abstractmethod
+import pickle
 from typing import Any
 
 import h5py
@@ -8,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from sklearn.manifold import TSNE
+import torch
 from torch.utils.data import Dataset
 
 matplotlib.use("Agg")
@@ -37,48 +40,40 @@ class NebulaPartitionHandler(Dataset, ABC):
         self,
         file_path: str,
         prefix: str = "train",
-        mode: str = "memory",
+        config: dict[str, Any] | None = None,
+        empty: bool = False,
     ):
         self.file_path = file_path
         self.prefix = prefix
-        self.mode = mode
+        self.config = config
+        self.empty = empty
         self.transform = None
         self.target_transform = None
         self.file = None
 
         self.data = None
         self.targets = None
-        self.data_shape = None
         self.num_classes = None
         self.length = None
 
-        if self.mode == "memory":
-            self.load_data()
-        elif self.mode == "lazy":
-            self.load_data_lazy()
-        else:
-            raise ValueError(f"Mode {self.mode} not supported")
+        self.load_data()
 
     def load_data(self):
+        if self.empty:
+            logging_training.info(
+                f"[NebulaPartitionHandler] No data loaded for {self.prefix} partition. Empty dataset."
+            )
+            return
         with h5py.File(self.file_path, "r") as f:
-            dset = f[f"{self.prefix}_data"]
-            self.data = np.array(dset)
-            self.targets = np.array(f[f"{self.prefix}_targets"])
-            self.data_shape = dset.attrs.get("data_shape", dset.shape[1:])
-            self.num_classes = dset.attrs.get("num_classes", 0)
+            prefix = (
+                "test" if self.prefix == "local_test" else self.prefix
+            )  # Local test uses the test prefix (same data but different split)
+            self.data = self.load_partition(f, f"{prefix}_data")
+            self.targets = np.array(f[f"{prefix}_targets"])
+            self.num_classes = f[f"{prefix}_data"].attrs.get("num_classes", 0)
             self.length = len(self.data)
         logging_training.info(
-            f"[NebulaPartitionHandler - Memory] [{self.prefix}] Loaded {self.length} samples from {self.file_path} with shape {self.data_shape} and {self.num_classes} classes."
-        )
-
-    def load_data_lazy(self):
-        self.file = h5py.File(self.file_path, "r", swmr=True)
-        dset = self.file[f"{self.prefix}_data"]
-        self.length = dset.shape[0]
-        self.data_shape = dset.attrs.get("data_shape", dset.shape[1:])
-        self.num_classes = dset.attrs.get("num_classes", 0)
-        logging_training.info(
-            f"[NebulaPartitionHandler - Lazy] [{self.prefix}] Lazy loaded {self.length} samples from {self.file_path} with shape {self.data_shape} and {self.num_classes} classes."
+            f"[NebulaPartitionHandler] [{self.prefix}] Loaded {self.length} samples from {self.file_path} and {self.num_classes} classes."
         )
 
     def close(self):
@@ -93,24 +88,62 @@ class NebulaPartitionHandler(Dataset, ABC):
     def __len__(self):
         return self.length
 
-    def __del__(self):
-        if self.file is not None:
-            self.file.close()
-
     def __getitem__(self, idx):
-        if self.mode == "memory":
-            data = self.data[idx]
-            target = self.targets[idx]
-        else:
-            try:
-                data = self.file[f"{self.prefix}_data"][idx]
-                target = self.file[f"{self.prefix}_targets"][idx]
-            except Exception as e:
-                raise RuntimeError(
-                    f"[NebulaPartitionHandler] Error reading index {idx} from file {self.file_path}: {e}"
-                )
-
+        data = self.data[idx]
+        target = self.targets[idx]
         return data, target
+
+    def set_data(self, data, targets, data_opt=None, targets_opt=None):
+        """
+        Set the data and targets for the dataset.
+        """
+        try:
+            # Input validation
+            if data is None or targets is None:
+                raise ValueError("Primary data and targets cannot be None")
+
+            if len(data) != len(targets):
+                raise ValueError(f"Data and targets length mismatch: {len(data)} vs {len(targets)}")
+
+            if data_opt is None or targets_opt is None:
+                self.data = data
+                self.targets = targets
+                self.length = len(data)
+                logging_training.info(f"[NebulaPartitionHandler] Set data with {self.length} samples.")
+                return
+
+            if len(data_opt) != len(targets_opt):
+                raise ValueError(f"Optional data and targets length mismatch: {len(data_opt)} vs {len(targets_opt)}")
+
+            main_count = int(len(data) * 0.8)
+            opt_count = min(len(data_opt), int(len(data) * (1 - 0.8)))
+            if isinstance(data, np.ndarray):
+                self.data = np.concatenate((data[:main_count], data_opt[:opt_count]))
+            else:
+                self.data = data[:main_count] + data_opt[:opt_count]
+
+            if isinstance(targets, np.ndarray):
+                self.targets = np.concatenate((targets[:main_count], targets_opt[:opt_count]))
+            else:
+                self.targets = targets[:main_count] + targets_opt[:opt_count]
+            self.length = len(self.data)
+
+        except Exception as e:
+            logging_training.exception(f"Error setting data: {e}")
+
+    def load_partition(self, file, name):
+        item = file[name]
+        if isinstance(item, h5py.Dataset):
+            typ = item.attrs.get("__type__", None)
+            if typ == "pickle":
+                logging_training.info(f"Loading pickled object from {name}")
+                return pickle.loads(item[()].tobytes())
+            else:
+                logging_training.warning(f"[NebulaPartitionHandler] Unknown type encountered: {typ} for item {name}")
+                return item[()]
+        else:
+            logging_training.warning(f"[NebulaPartitionHandler] Unknown item encountered: {item} for item {name}")
+            return item[()]
 
 
 class NebulaPartition:
@@ -118,19 +151,17 @@ class NebulaPartition:
     A class to handle the partitioning of datasets for federated learning.
     """
 
-    def __init__(self, handler: NebulaPartitionHandler, mode: str, config: dict[str, Any]):
+    def __init__(self, handler: NebulaPartitionHandler, config: dict[str, Any] | None = None):
         self.handler = handler
-        self.mode = mode
-        self.config = config
-
-        if self.mode not in ["lazy", "memory"]:
-            raise ValueError(f"Mode {self.mode} not supported")
+        self.config = config if config is not None else {}
 
         self.train_set = None
         self.train_indices = None
 
         self.test_set = None
         self.test_indices = None
+
+        self.local_test_set = None
         self.local_test_indices = None
 
         enable_deterministic(seed=self.config.participant["scenario_args"]["random_seed"])
@@ -189,6 +220,15 @@ class NebulaPartition:
         """
         test_labels = self.get_test_labels()
         train_labels = self.get_train_labels()
+
+        if test_labels is None or train_labels is None:
+            logging_training.warning("Either test_labels or train_labels is None in set_local_test_indices")
+            return []
+
+        if self.test_set is None:
+            logging_training.warning("test_set is None in set_local_test_indices")
+            return []
+
         return [idx for idx in range(len(self.test_set)) if test_labels[idx] in train_labels]
 
     def log_partition(self):
@@ -220,14 +260,19 @@ class NebulaPartition:
             train_partition_file = os.path.join(path, f"participant_{p}_train.h5")
             wait_for_file(train_partition_file)
             logging_training.info(f"Loading train data from {train_partition_file}")
-            self.train_set = self.handler(train_partition_file, "train", mode=self.mode)
+            self.train_set = self.handler(train_partition_file, "train", config=self.config)
             self.train_indices = list(range(len(self.train_set)))
 
             test_partition_file = os.path.join(path, "global_test.h5")
             wait_for_file(test_partition_file)
             logging_training.info(f"Loading test data from {test_partition_file}")
-            self.test_set = self.handler(test_partition_file, "test", mode=self.mode)
+            self.test_set = self.handler(test_partition_file, "test", config=self.config)
             self.test_indices = list(range(len(self.test_set)))
+
+            self.local_test_set = self.handler(
+                test_partition_file, "local_test", config=self.config, empty=True
+            )
+            self.local_test_set.set_data(self.test_set.data, self.test_set.targets)
             self.local_test_indices = self.set_local_test_indices()
 
             logging_training.info(f"Successfully loaded partition data for participant {p}.")
@@ -349,11 +394,21 @@ class NebulaDataset:
                 train_labels = np.array([self.train_set.targets[idx] for idx in self.train_indices_map[participant_id]])
                 indices = np.where(np.isin(test_targets, train_labels))[0].tolist()
                 local_test_indices_map[participant_id] = indices
-                logging.info(f"Participant {participant_id} | Local test indices: {indices}")
             return local_test_indices_map
         except Exception as e:
             logging.exception(f"Error in get_local_test_indices_map: {e}")
-            raise Exception(f"Error in get_local_test_indices_map: {e}")
+            raise
+
+    def save_partition(self, obj, file, name):
+        try:
+            logging.info(f"Saving pickled object of type {type(obj)}")
+            pickled = pickle.dumps(obj)
+            ds = file.create_dataset(name, data=np.void(pickled))
+            ds.attrs["__type__"] = "pickle"
+            logging.info(f"Saved pickled object of type {type(obj)} to {name}")
+        except Exception as e:
+            logging.exception(f"Error saving object to HDF5: {e}")
+            raise
 
     def save_partitions(self):
         """
@@ -377,11 +432,11 @@ class NebulaDataset:
             # Save global test data
             file_name = os.path.join(path, "global_test.h5")
             with h5py.File(file_name, "w") as f:
-                test_data = np.array(self.test_set.data)
+                indices = list(range(len(self.test_set)))
+                test_data = [self.test_set[i] for i in indices]
+                self.save_partition(test_data, f, "test_data")
+                f["test_data"].attrs["num_classes"] = self.num_classes
                 test_targets = np.array(self.test_set.targets)
-                dset = f.create_dataset("test_data", data=test_data, compression="gzip")
-                dset.attrs["data_shape"] = test_data.shape[1:]  # Save the shape of the data
-                dset.attrs["num_classes"] = self.num_classes  # Save the number of classes
                 f.create_dataset("test_targets", data=test_targets, compression="gzip")
 
             for participant in range(self.partitions_number):
@@ -389,13 +444,12 @@ class NebulaDataset:
                 with h5py.File(file_name, "w") as f:
                     logging.info(f"Saving training data for participant {participant} in {file_name}")
                     indices = self.train_indices_map[participant]
-                    train_data = np.array([self.train_set.data[i] for i in indices])
+                    train_data = [self.train_set[i] for i in indices]
+                    self.save_partition(train_data, f, "train_data")
+                    f["train_data"].attrs["num_classes"] = self.num_classes
                     train_targets = np.array([self.train_set.targets[i] for i in indices])
-                    dset = f.create_dataset("train_data", data=train_data, compression="gzip")
-                    dset.attrs["data_shape"] = train_data.shape[1:]  # Save the shape of the data
-                    dset.attrs["num_classes"] = self.num_classes  # Save the number of classes
                     f.create_dataset("train_targets", data=train_targets, compression="gzip")
-                    logging.info(f"Partition saved for participant {participant} with {train_data.shape[0]} samples.")
+                    logging.info(f"Partition saved for participant {participant}.")
 
             logging.info("Successfully saved all partition files.")
 
@@ -837,12 +891,6 @@ class NebulaDataset:
         """
         Partition a dataset into multiple subsets with a specified level of non-IID-ness.
 
-        This function divides a dataset into a specified number of subsets (federated
-        clients), where each subset has a different class distribution. The class
-        distribution in each subset is determined by a specified percentage, making the
-        partition suitable for simulating non-IID (non-Independently and Identically
-        Distributed) data scenarios in federated learning.
-
         Args:
             dataset (torch.utils.data.Dataset): The dataset to partition. It should have
                                                 'data' and 'targets' attributes.
@@ -854,11 +902,6 @@ class NebulaDataset:
         Returns:
             dict: A dictionary where keys are subset indices (ranging from 0 to partitions_number-1)
                 and values are lists of indices corresponding to the samples in each subset.
-
-        The function ensures that the number of classes in each subset varies based on the selected
-        percentage. The partitioning process involves iterating over each class, shuffling the
-        indices of that class, and then splitting them according to the calculated subset sizes.
-        The function also prints the class distribution in each subset for reference.
 
         Example usage:
             federated_data = percentage_partition(my_dataset, percentage=20)

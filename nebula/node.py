@@ -1,7 +1,6 @@
 import os
 import random
 import sys
-import time
 import warnings
 
 import torch
@@ -147,7 +146,7 @@ async def main(config):
     else:
         raise ValueError(f"Dataset {dataset_name} not supported")
 
-    dataset = NebulaPartition(handler=handler, mode="memory", config=config)
+    dataset = NebulaPartition(handler=handler, config=config)
     dataset.load_partition()
     dataset.log_partition()
 
@@ -156,6 +155,7 @@ async def main(config):
         train_set_indices=dataset.train_indices,
         test_set=dataset.test_set,
         test_set_indices=dataset.test_indices,
+        local_test_set=dataset.local_test_set,
         local_test_set_indices=dataset.local_test_indices,
         num_workers=num_workers,
         batch_size=batch_size,

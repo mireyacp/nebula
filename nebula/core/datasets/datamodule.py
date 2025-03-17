@@ -17,6 +17,7 @@ class DataModule(LightningDataModule):
         train_set_indices,
         test_set,
         test_set_indices,
+        local_test_set,
         local_test_set_indices,
         batch_size=32,
         num_workers=0,
@@ -28,6 +29,7 @@ class DataModule(LightningDataModule):
         self.train_set_indices = train_set_indices
         self.test_set = test_set
         self.test_set_indices = test_set_indices
+        self.local_test_set = local_test_set
         self.local_test_set_indices = local_test_set_indices
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -73,7 +75,7 @@ class DataModule(LightningDataModule):
         if stage in (None, "test"):
             # Test sets
             self.global_te_subset = ChangeableSubset(self.test_set, self.test_set_indices)
-            self.local_te_subset = ChangeableSubset(self.test_set, self.local_test_set_indices)
+            self.local_te_subset = ChangeableSubset(self.local_test_set, self.local_test_set_indices)
 
     def teardown(self, stage=None):
         # Teardown the datasets

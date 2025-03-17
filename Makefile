@@ -1,4 +1,4 @@
-UV := uv
+UV := $(HOME)/.local/bin/uv
 PYTHON_VERSION := 3.11
 UV_INSTALL_SCRIPT := https://astral.sh/uv/install.sh
 PATH := $(HOME)/.local/bin:$(PATH)
@@ -20,8 +20,9 @@ check-uv:		## Check and install uv if necessary
 install-python: check-uv	## Install Python with uv
 	@echo "🐍 Installing Python $(PYTHON_VERSION) with uv"
 	@$(UV) python install $(PYTHON_VERSION)
-	@echo "🔧 Configuring Python $(PYTHON_VERSION) as the default Python version"
+	@echo "🐍 Configuring Python $(PYTHON_VERSION) as the default Python version"
 	@$(UV) python pin $(PYTHON_VERSION)
+	@echo "🐍 Python installation complete."
 
 .PHONY: install
 install: install-python		## Install core dependencies

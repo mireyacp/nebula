@@ -8,8 +8,8 @@ from nebula.core.datasets.nebuladataset import NebulaDataset, NebulaPartitionHan
 
 
 class FashionMNISTPartitionHandler(NebulaPartitionHandler):
-    def __init__(self, file_path, prefix, mode):
-        super().__init__(file_path, prefix, mode)
+    def __init__(self, file_path, prefix, config, empty=False):
+        super().__init__(file_path, prefix, config, empty)
 
         # Custom transform for MNIST
         self.transform = transforms.Compose([
@@ -18,9 +18,17 @@ class FashionMNISTPartitionHandler(NebulaPartitionHandler):
         ])
 
     def __getitem__(self, idx):
-        img, target = super().__getitem__(idx)
+        data, target = super().__getitem__(idx)
 
-        img = Image.fromarray(img, mode="L")
+        # FashionMNIST from torchvision returns a tuple (image, target)
+        if isinstance(data, tuple):
+            img, target = data
+        else:
+            img = data
+
+        # Only convert if not already a PIL image
+        if not isinstance(img, Image.Image):
+            img = Image.fromarray(img, mode="L")
 
         if self.transform is not None:
             img = self.transform(img)
