@@ -313,7 +313,7 @@
                             <i id="iidHelpIcon" class="fa fa-info-circle" style="cursor: pointer;"></i>
                         </small>
                     </div>
-                    <h5 class="step-title">Partition Methods</h5>
+                    <h5 class="step-title">Partition methods</h5>
                     <div class="form-check form-check-inline">
                         <select class="form-control" id="partitionSelect" name="partition"
                             style="display: inline; width: 50%">
@@ -1446,9 +1446,17 @@
             '                    <li>Manual: Select malicious nodes in the graph</li>\n' +
             '                </ul>'
 
+        contentProcessHelp = '<ul>\n' +
+            '                    <li>Processes: Deploy the nodes of the federation using processes</li>\n' +
+            '                </ul>';
+
+        contentDockerHelp = '<ul>\n' +
+            '                    <li>Docker: Deploy the nodes of the federation using docker containers</li>\n' +
+            '                </ul>';
+
         var popoverTriggerEl = document.getElementById("topologyCustomIcon");
         var popover = new bootstrap.Popover(popoverTriggerEl, {
-            title: "Network topology",
+            title: "Topology generation",
             content: contentTopologyCustomHelp,
             trigger: "hover",
             placement: "right",
@@ -1459,7 +1467,7 @@
 
         var popoverTriggerEl = document.getElementById("topologyPredefinedIcon");
         var popover = new bootstrap.Popover(popoverTriggerEl, {
-            title: "Network topology",
+            title: "Topology generation",
             content: contentTopologyPredefinedHelp,
             trigger: "hover",
             placement: "right",
@@ -1470,7 +1478,7 @@
 
         var popoverTriggerEl = document.getElementById("architectureHelpIcon");
         var popover = new bootstrap.Popover(popoverTriggerEl, {
-            title: "Federation architecture",
+            title: "Federation approach",
             content: contentArchitectureHelp,
             trigger: "hover",
             placement: "right",
@@ -1481,7 +1489,7 @@
 
         var popoverTriggerEl = document.getElementById("datasetHelpIcon");
         var popover = new bootstrap.Popover(popoverTriggerEl, {
-            title: "Dataset",
+            title: "Federated dataset",
             content: contentDatasetHelp,
             trigger: "hover",
             placement: "right",
@@ -1492,7 +1500,7 @@
 
         var popoverTriggerEl = document.getElementById("iidHelpIcon");
         var popover = new bootstrap.Popover(popoverTriggerEl, {
-            title: "IID",
+            title: "Dataset type",
             content: contentIIDHelp,
             trigger: "hover",
             placement: "right",
@@ -1503,7 +1511,7 @@
 
         var popoverTriggerEl = document.getElementById("partitionMethodsHelpIcon");
         var popover = new bootstrap.Popover(popoverTriggerEl, {
-            title: 'Partition Methods',
+            title: 'Partition methods',
             content: contentPartitionMethodsHelp,
             trigger: 'hover',
             placement: 'right',
@@ -1514,7 +1522,7 @@
 
         var popoverTriggerEl = document.getElementById("parameterSettingHelpIcon");
         var popover = new bootstrap.Popover(popoverTriggerEl, {
-            title: 'IID',
+            title: 'Parameter setting',
             html: true,
             placement: 'right',
             content: contentParameterSettingHelp,
@@ -1545,15 +1553,26 @@
             delay: { show: 500, hide: 100 },
         });
 
-        // When click processHelpIcon, redirect to the documentation page
-        var processIcon = document.getElementById("processHelpIcon");
-        processIcon.addEventListener("click", function () {
-            window.open("#", "_blank");
+        var popoverTriggerEl = document.getElementById("processHelpIcon");
+        var popover = new bootstrap.Popover(popoverTriggerEl, {
+            title: "Deployment type",
+            content: contentProcessHelp,
+            trigger: "hover",
+            placement: "right",
+            html: true,
+            container: "body",
+            delay: { show: 500, hide: 100 },
         });
 
-        var dockerIcon = document.getElementById("dockerHelpIcon");
-        dockerIcon.addEventListener("click", function () {
-            window.open("#", "_blank");
+        var popoverTriggerEl = document.getElementById("dockerHelpIcon");
+        var popover = new bootstrap.Popover(popoverTriggerEl, {
+            title: "Deployment type",
+            content: contentDockerHelp,
+            trigger: "hover",
+            placement: "right",
+            html: true,
+            container: "body",
+            delay: { show: 500, hide: 100 },
         });
     </script>
 
