@@ -157,9 +157,6 @@
                                 <input type="checkbox" id="mod-neuroninversion" value='GLLNeuronInversionAttack' style="margin-right: 10px;">GLL Neuron Inversion
                             </label>
                             <label>
-                                <input type="checkbox" id="mod-noiseinjection" value='NoiseInjectionAttack' style="margin-right: 10px;">Noise Injection
-                            </label>
-                            <label>
                                 <input type="checkbox" id="mod-swappingweights" value='SwappingWeightsAttack' style="margin-right: 10px;">Swapping Weights
                             </label>
                             <label>
@@ -501,7 +498,6 @@
                             <option>Sample Poisoning</option>
                             <option>Model Poisoning</option>
                             <option>GLL Neuron Inversion</option>
-                            <option>Noise Injection</option>
                             <option>Swapping Weights</option>
                             <option>Delayer</option>
                             <option>Flooding</option>
@@ -557,12 +553,6 @@
                         <div class="form-check form-check-inline" id="target_changed_label-container" style="display: none;">
                             <input type="number" class="form-control" id="target_changed_label"
                                 placeholder="target changed label" min="0" value="7"
-                                style="display: inline; width: 20%">
-                        </div>
-                        <h5 id="strength-title" class="step-title" style="display: none;">Noise strength</h5>
-                        <div class="form-check form-check-inline" id="strength-container" style="display: none;">
-                            <input type="number" class="form-control" id="strength"
-                                placeholder="Noise strength" value="10000"
                                 style="display: inline; width: 20%">
                         </div>
                         <h5 id="layer_idx-title" class="step-title" style="display: none;">Layer</h5>
@@ -2859,40 +2849,6 @@
                 document.getElementById("target_changed_label-container").style.display = "none";
                 document.getElementById("strength-title").style.display = "none";
                 document.getElementById("strength-container").style.display = "none";
-                document.getElementById("layer_idx-title").style.display = "none";
-                document.getElementById("layer_idx-container").style.display = "none";
-                document.getElementById("delay-title").style.display = "none";
-                document.getElementById("delay-container").style.display = "none";
-                document.getElementById("start-attack-title").style.display = "block";
-                document.getElementById("start-attack-container").style.display = "block";
-                document.getElementById("stop-attack-title").style.display = "block";
-                document.getElementById("stop-attack-container").style.display = "block";
-                document.getElementById("attack-interval-title").style.display = "block";
-                document.getElementById("attack-interval-container").style.display = "block";
-                document.getElementById("target-percentage-title").style.display = "none";
-                document.getElementById("target-percentage-container").style.display = "none";
-                document.getElementById("selection-interval-title").style.display = "none";
-                document.getElementById("selection-interval-container").style.display = "none";
-                document.getElementById("flooding-factor-title").style.display = "none";
-                document.getElementById("flooding-factor-container").style.display = "none";
-            }
-            else if(this.value == "Noise Injection"){
-                document.getElementById("poisoned-node-title").style.display = "block";
-                document.getElementById("poisoned-node-percent-container").style.display = "block";
-                document.getElementById("poisoned-sample-title").style.display = "none";
-                document.getElementById("poisoned-sample-percent-container").style.display = "none";
-                document.getElementById("poisoned-noise-title").style.display = "none";
-                document.getElementById("poisoned-noise-percent-container").style.display = "none";
-                document.getElementById("noise-type-title").style.display = "none";
-                document.getElementById("noise-type-container").style.display = "none";
-                document.getElementById("targeted-title").style.display = "none";
-                document.getElementById("targeted-container").style.display = "none";
-                document.getElementById("target_label-title").style.display = "none";
-                document.getElementById("target_label-container").style.display = "none";
-                document.getElementById("target_changed_label-title").style.display = "none";
-                document.getElementById("target_changed_label-container").style.display = "none";
-                document.getElementById("strength-title").style.display = "block";
-                document.getElementById("strength-container").style.display = "block";
                 document.getElementById("layer_idx-title").style.display = "none";
                 document.getElementById("layer_idx-container").style.display = "none";
                 document.getElementById("delay-title").style.display = "none";

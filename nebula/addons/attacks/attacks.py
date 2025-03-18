@@ -116,12 +116,10 @@ def create_attack(engine) -> Attack:
     from nebula.addons.attacks.dataset.labelflipping import LabelFlippingAttack
     from nebula.addons.attacks.model.gllneuroninversion import GLLNeuronInversionAttack
     from nebula.addons.attacks.model.modelpoison import ModelPoisonAttack
-    from nebula.addons.attacks.model.noiseinjection import NoiseInjectionAttack
     from nebula.addons.attacks.model.swappingweights import SwappingWeightsAttack
 
     ATTACK_MAP = {
         "GLL Neuron Inversion": GLLNeuronInversionAttack,
-        "Noise Injection": NoiseInjectionAttack,
         "Swapping Weights": SwappingWeightsAttack,
         "Delayer": DelayerAttack,
         "Flooding": FloodingAttack,
