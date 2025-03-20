@@ -89,12 +89,8 @@ class LabelFlippingAttack(DatasetAttack):
         new_dataset = copy.deepcopy(dataset)
 
         targets = torch.tensor(new_dataset.targets) if isinstance(new_dataset.targets, list) else new_dataset.targets
-        targets = targets.detach().clone()
 
         num_indices = len(indices)
-        # classes = new_dataset.classes
-        # class_to_idx = new_dataset.class_to_idx
-        # class_list = [class_to_idx[i] for i in classes]
         class_list = list(set(targets.tolist()))
         if not targeted:
             num_flipped = int(poisoned_percent * num_indices)
