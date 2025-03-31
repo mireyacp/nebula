@@ -49,14 +49,19 @@ class MessagesManager:
                     "weight": 1,
                 },
             },
-            "reputation": {"parameters": ["reputation"], "defaults": {}},
+            "reputation": {
+                "parameters": ["node_id", "score", "round", "action"],
+                "defaults": {
+                    "round": None,
+                },
+            },
             # Add additional message types here
         }
 
     def get_messages_events(self):
         message_events = {}
         for message_name in self._message_templates:
-            if message_name != "model" and message_name != "reputation":
+            if message_name != "model":
                 message_events[message_name] = get_actions_names(message_name)
         return message_events
 

@@ -605,51 +605,58 @@
                         </div>
                     </div>
                 </div>
-                <!-- Advanced Defense -->
-                <div class="form-group row container-shadow tiny grey">
+               <!-- Advanced Defense -->
+               <div class="form-group row container-shadow tiny grey">
                     <h5 class="step-number">Defense <i class="fa fa-wrench"></i>
-                        <input type="checkbox" id="defense-lock" onchange="lock('without-reputation-btn', 'with-reputation-btn', 'dynamic-topology-btn', 'dynamic-aggregation-btn', 'targetAggregationSelect', checked)" style="display: none;">
+                        <input type="checkbox" id="defense-lock" onchange="lock('reputationSwitch', 'initial-reputation', 'weighting-factor', 'model-similarity', 'num-messages', 'model-arrival-latency', 'fraction-params-changed', checked)" style="display: none;">
                         <label for="defense-lock" class="icon-container" style="float: right;">
                             <i class="fa fa-lock"></i>
                         </label>
                     </h5>
-                    <h5 class="step-title">Reputation System</h5>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="reputationSystem" id="without-reputation-btn"
-                            checked>
-                        <label class="form-check-label" for="without-reputation-btn">Disable
-                            Reputation</label>
+                    <h5 class="step-title">With reputation</h5>
+                    <div class="form-check form-switch" style="margin-left: 23px;">
+                        <input class="form-check-input" type="checkbox" id="reputationSwitch" style="display: inline; width: 80px; height: 30px;">
                     </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="reputationSystem" id="with-reputation-btn">
-                        <label class="form-check-label" for="with-reputation-btn">Enable Reputation</label>
+                    <div id="reputation-settings" style="margin-top: 10px; display:none;">
+                        <h5 class="step-title">Reputation Initialization</h5>
+                        <input class="form-control" type="number" id="initial-reputation" name="initialReputation" step="0.01" style="display: inline; width: 80%" value="0.6" min="0.1" max="1">
+                        <small id="reputationInitializationHelp" class="form-text text-muted">
+                            <i id="reputationInitializationHelpIcon" class="fa fa-info-circle" style="cursor: pointer;"></i>
+                        </small>
                     </div>
-                    <div id="mtd-strategy" style="display: none; margin-left: 10px">
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="dynamicTopology"
-                                id="dynamic-topology-btn">
-                            <label class="form-check-label" for="dynamic-topology-btn">Dynamic
-                                Topology</label>
-
+                    <div id="weighting-settings" style="margin-top: 10px; display:none;">
+                        <h5 class="step-title">Weighting Factor</h5>
+                        <select class="form-control" id="weighting-factor" name="weightingFactor" style="display: inline; width: 80%">
+                            <option value="dynamic" selected>Dynamic</option>
+                            <option value="static">Static</option>
+                        </select>
+                        <small id="weightingFactorHelp" class="form-text text-muted">
+                            <i id="weightingFactorHelpIcon" class="fa fa-info-circle" style="cursor: pointer;"></i>
+                        </small>
+                    </div>
+                    <div id="reputation-metrics" style="display:none;">
+                        <h5 class="step-title">Reputation Metrics</h5>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="model-similarity" name="modelSimilarity">
+                            <label class="form-check-label" for="model-similarity">Model Similarity</label>
+                            <input class="form-control weight-input" type="number" id="weight-model-similarity" name="weightModelSimilarity" step="0.01" value="0" placeholder="Weight to model similarity" style="display: none; width: 30%; margin-top:2px;">
                         </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="dynamicAggregation"
-                                id="dynamic-aggregation-btn">
-                            <label class="form-check-label" for="dynamic-aggregation-btn">Dynamic
-                                Aggregation</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="num-messages" name="numMessages">
+                            <label class="form-check-label" for="num-messages">Number of Messages</label>
+                            <input class="form-control weight-input" type="number" id="weight-num-messages" name="weightNumMessages" step="0.01" value="0" placeholder="Weight to number of messages" style="display: none; width: 30%; margin-top:2px;">
                         </div>
-                        <div id="target-aggregation" style="display: none; margin-left: 20px">
-                            <h5 class="step-title">Target Aggregation Algorithm</h5>
-                            <div class="form-check form-check-inline">
-                                <select class="form-control" id="targetAggregationSelect" name="targetAggregation"
-                                    style="display: inline; width: 20%">
-                                    <option selected>Krum</option>
-                                    <option>FedAvg</option>
-                                    <option>TrimmedMean</option>
-                                    <option>Median</option>
-                                </select>
-                            </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="model-arrival-latency" name="modelArrivalLatency">
+                            <label class="form-check-label" for="model-arrival-latency">Model Arrival Latency</label>
+                            <input class="form-control weight-input" type="number" id="weight-model-arrival-latency" name="weightModelArrivalLatency" step="0.01" value="0" placeholder="Weight to model arrival latency" style="display: none; width: 30%; margin-top:2px;">
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="fraction-params-changed" name="fractionParametersChanged" >
+                            <label class="form-check-label" for="fraction-params-changed">Fraction Parameters Changed</label>
+                            <input class="form-control weight-input" type="number" id="weight-fraction-params-changed" name="weightFractionParametersChanged" step="0.01" value="0" placeholder="Weight to fraction paremeters changed" style="display: none; width: 30%; margin-top:2px;">
+                        </div>
+                        <p id="weight-warning" style="color: red; display: none;">Total weight must not exceed 1.</p>
                     </div>
                 </div>
                 <!-- Mobility -->
@@ -1138,10 +1145,19 @@
             data["attack_params"].selection_interval = document.getElementById("selection-interval").value
             data["attack_params"].flooding_factor = document.getElementById("flooding-factor").value
             // Step 13
-            data["with_reputation"] = document.getElementById("with-reputation-btn").checked ? true : false
-            data["is_dynamic_topology"] = document.getElementById("dynamic-topology-btn").checked ? true : false
-            data["is_dynamic_aggregation"] = document.getElementById("dynamic-aggregation-btn").checked ? true : false
-            data["target_aggregation"] = document.getElementById("dynamic-aggregation-btn").checked ? document.getElementById("targetAggregationSelect").value : false
+            data["with_reputation"] = document.getElementById("reputationSwitch").checked
+            data["reputation_metrics"] = {
+                "model_similarity": document.getElementById("model-similarity").checked,
+                "num_messages": document.getElementById("num-messages").checked,
+                "model_arrival_latency": document.getElementById("model-arrival-latency").checked,
+                "fraction_parameters_changed": document.getElementById("fraction-params-changed").checked
+            }
+            data["initial_reputation"] = document.getElementById("initial-reputation").value
+            data["weighting_factor"] = document.getElementById("weighting-factor").value
+            data["weight_model_arrival_latency"] = document.getElementById("weight-model-arrival-latency").value
+            data["weight_model_similarity"] = document.getElementById("weight-model-similarity").value
+            data["weight_num_messages"] = document.getElementById("weight-num-messages").value
+            data["weight_fraction_params_changed"] = document.getElementById("weight-fraction-params-changed").value
             // Step 14
             data["random_geo"] = document.getElementById("random-geo-btn").checked ? true : false
             data["latitude"] = parseFloat(document.getElementById("latitude").value)
@@ -1268,13 +1284,25 @@
                     selectElement.dispatchEvent(new Event('change'));
                 }
                 // Step 12
-                document.getElementById("with-reputation-btn").checked = data["with_reputation"];
-                if (data["with_reputation"]) {
-                    document.getElementById("mtd-strategy").style.display = "block";
+                var selectElement = document.getElementById("reputationSwitch");
+                selectElement.checked = data["with_reputation"];
+                if (selectElement.checked) {
+                    selectElement.dispatchEvent(new Event('change'));
+                    Object.entries(data.reputation_metrics).forEach(([key, value]) => {
+                        const elementId = key.replace(/_/g, "-");
+                        const element = document.getElementById(elementId);
+                        if (element) {
+                            element.checked = value;
+                        }
+                    });
+                    document.getElementById("initial-reputation").value = data["initial_reputation"];
+                    document.getElementById("weighting-factor").value = data["weighting_factor"];
+                    document.getElementById("weighting-factor").dispatchEvent(new Event('change'));
+                    document.getElementById("weight-model-arrival-latency").value = data["weight_model_arrival_latency"];
+                    document.getElementById("weight-model-similarity").value = data["weight_model_similarity"];
+                    document.getElementById("weight-num-messages").value = data["weight_num_messages"];
+                    document.getElementById("weight-fraction-params-changed").value = data["weight_fraction_params_changed"];
                 }
-                document.getElementById("dynamic-topology-btn").checked = data["is_dynamic_topology"];
-                document.getElementById("dynamic-aggregation-btn").checked = data["is_dynamic_aggregation"];
-                document.getElementById("targetAggregationSelect").value = data["target_aggregation"];
                 // Step 13
                 document.getElementById("random-geo-btn").checked = data["random_geo"];
                 document.getElementById("latitude").value = data["latitude"];
@@ -1556,6 +1584,51 @@
         var popover = new bootstrap.Popover(popoverTriggerEl, {
             title: "Deployment type",
             content: contentDockerHelp,
+            trigger: "hover",
+            placement: "right",
+            html: true,
+            container: "body",
+            delay: { show: 500, hide: 100 },
+        });
+
+        var reputationInitialization = document.getElementById("reputationInitializationHelpIcon");
+        var popover = new bootstrap.Popover(reputationInitialization, {
+            title: "Reputation Initialization",
+            content: "Initial reputation value for all participants",
+            trigger: "hover",
+            placement: "right",
+            html: true,
+            container: "body",
+            delay: { show: 500, hide: 100 },
+        });
+
+        var reputationWeighting = document.getElementById("weightingFactorHelpIcon");
+        var popover = new bootstrap.Popover(reputationWeighting, {
+            title: "Reputation Weighting",
+            content: "Use dynamic or static weighting factor for reputation",
+            trigger: "hover",
+            placement: "right",
+            html: true,
+            container: "body",
+            delay: { show: 500, hide: 100 },
+        });
+
+
+        var reputationInitialization = document.getElementById("reputationInitializationHelpIcon");
+        var popover = new bootstrap.Popover(reputationInitialization, {
+            title: "Reputation Initialization",
+            content: "Initial reputation value for all participants",
+            trigger: "hover",
+            placement: "right",
+            html: true,
+            container: "body",
+            delay: { show: 500, hide: 100 },
+        });
+
+        var reputationWeighting = document.getElementById("weightingFactorHelpIcon");
+        var popover = new bootstrap.Popover(reputationWeighting, {
+            title: "Reputation Weighting",
+            content: "Use dynamic or static weighting factor for reputation",
             trigger: "hover",
             placement: "right",
             html: true,
@@ -1851,11 +1924,8 @@
             // Step 12
             if(!document.getElementById("defense-lock").checked){
                 document.getElementById("without-reputation-btn").checked = true;
-                document.getElementById("dynamic-aggregation-btn").checked = false;
-                document.getElementById("targetAggregationSelect").value = "Krum";
                 $('#dynamic-aggregation-btn').change();
                 document.getElementById("without-reputation-btn").click();
-                document.getElementById("dynamic-topology-btn").checked = false;
             }
             // Step 13
             if(!document.getElementById("mobility-lock").checked){
@@ -2427,32 +2497,51 @@
     </script>
 
     <script>
-        // Generate defense with reputation system configs
-        // When click on "with-reputation-btn" check input, dife "mtd-strategy"
-
-        mtdStrategyDiv = document.getElementById("mtd-strategy")
-        withoutReputationBtn = document.getElementById("without-reputation-btn");
-        withoutReputationBtn.addEventListener("click", function () {
-            mtdStrategyDiv.style.display = "none";
-        });
-        // When click on "with-reputation-btn" check input, display "predefined-topology"
-
-        withReputationBtn = document.getElementById("with-reputation-btn");
-        withReputationBtn.addEventListener("click", function () {
-            mtdStrategyDiv.style.display = "block";
-        });
-
-        // When click on "with-reputation-btn" check input, display "predefined-topology"
-        targetAggregation = document.getElementById("target-aggregation")
-        targetAggregationSelect = document.getElementById("dynamic-aggregation-btn");
-        targetAggregationSelect.addEventListener("change", function () {
-            if (this.checked) {
-                targetAggregation.style.display = "block";
-            } else {
-                targetAggregation.style.display = "none";
+        document.getElementById("reputationSwitch").addEventListener("change", function (){
+            if(this.checked){
+                document.getElementById("reputation-metrics").style.display = "block";
+                document.getElementById("reputation-settings").style.display = "block";
+                document.getElementById("weighting-settings").style.display = "block";
+            } else{
+                document.getElementById("reputation-metrics").style.display = "none";
+                document.getElementById("reputation-settings").style.display = "none";
+                document.getElementById("weighting-settings").style.display = "none";
             }
         });
 
+        document.getElementById("initial-reputation").addEventListener("blur", function () {
+            let min = parseFloat(this.min);
+            let max = parseFloat(this.max);
+            let value = parseFloat(this.value);
+
+            if (value < min) {
+                this.value = min;
+            } else if (value > max) {
+                this.value = max;
+            }
+        });
+
+        document.getElementById("weighting-factor").addEventListener("change", function () {
+            let showWeights = this.value === "static";
+            document.querySelectorAll(".weight-input").forEach(input => {
+                input.style.display = showWeights ? "inline-block" : "none";
+            });
+        });
+
+        function validateWeights() {
+            let totalWeight = 0;
+            document.querySelectorAll(".weight-input").forEach(input => {
+                let checkbox = input.previousElementSibling.previousElementSibling;
+                if (checkbox.checked && input.style.display !== "none" && input.value) {
+                    totalWeight += parseFloat(input.value);
+                }
+            });
+            document.getElementById("weight-warning").style.display = totalWeight > 1 ? "block" : "none";
+        }
+
+        document.querySelectorAll(".weight-input").forEach(input => {
+            input.addEventListener("input", validateWeights);
+        });
     </script>
 
     <script>

@@ -1,5 +1,7 @@
+import asyncio
 import logging
 from functools import wraps
+import time
 
 from nebula.addons.attacks.communications.communicationattack import CommunicationAttack
 
@@ -34,7 +36,7 @@ class FloodingAttack(CommunicationAttack):
         super().__init__(
             engine,
             engine._cm,
-            "send_message",
+            "send_model",
             round_start,
             round_stop,
             attack_interval,
@@ -66,9 +68,11 @@ class FloodingAttack(CommunicationAttack):
                                 logging.info(
                                     f"[FloodingAttack] Sending duplicate {i + 1}/{flooding_factor} to {dest_addr}"
                                 )
-                            _, *new_args = args  # Exclude self argument
+                            _, dest_addr, _, serialized_model, weight = args  # Exclude self argument
+                            new_args = [dest_addr, i, serialized_model, weight]
                             await func(*new_args, **kwargs)
-                _, *new_args = args  # Exclude self argument
+                _, dest_addr, _, serialized_model, weight = args  # Exclude self argument
+                new_args = [dest_addr, i, serialized_model, weight]
                 return await func(*new_args)
 
             return wrapper

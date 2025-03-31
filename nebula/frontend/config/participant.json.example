@@ -95,9 +95,9 @@
   },
   "defense_args": {
     "with_reputation": false,
-    "is_dynamic_topology": false,
-    "is_dynamic_aggregation": false,
-    "target_aggregation": false
+    "reputation_metrics": {},
+    "initial_reputation": 0.6,
+    "weighting_factor": "dynamic"
   },
   "adversarial_args": {
     "attacks": "No Attack",

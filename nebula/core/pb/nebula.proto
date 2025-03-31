@@ -22,9 +22,10 @@ message Wrapper {
     ModelMessage model_message = 5;
     ConnectionMessage connection_message = 6;
     ResponseMessage response_message = 7;
-    DiscoverMessage discover_message = 8;
-    OfferMessage offer_message = 9;
-    LinkMessage link_message = 10;
+    ReputationMessage reputation_message = 8;
+    DiscoverMessage discover_message = 9;
+    OfferMessage offer_message = 10;
+    LinkMessage link_message = 11;
   }
 }
 
@@ -96,16 +97,16 @@ message OfferMessage{
     Action action = 1;
     float n_neighbors = 2;
     float loss = 3;
-    bytes parameters = 4;       
-    int32 rounds = 5;           
+    bytes parameters = 4;
+    int32 rounds = 5;
     int32 round = 6;
-    int32 epochs = 7; 
+    int32 epochs = 7;
 }
 
 message LinkMessage {
     enum Action {
         CONNECT_TO = 0;         // Message to tell a node who to connect to
-        DISCONNECT_FROM = 1;    // Message to tell a node who to disconnect 
+        DISCONNECT_FROM = 1;    // Message to tell a node who to disconnect
     }
     Action action = 1;
     string addrs = 2;
@@ -114,4 +115,14 @@ message LinkMessage {
 // Response transmits the outcome of a requested operation, including any errors.
 message ResponseMessage {
   string response = 1;      // Outcome of the requested operation.
+}
+
+message ReputationMessage {
+  enum Action {
+    SHARE = 0;
+  }
+  string node_id = 1; //Id of the node to which the reputation is sent
+  float score = 2; //Score reputation
+  int32 round = 3; //Round to send the reputation
+  Action action = 4; // Action type (default: SHARE)
 }

@@ -118,6 +118,8 @@ class CFLUpdateHandler(UpdateHandler):
         if updates_missing:
             self._missing_ones = updates_missing
             logging.info(f"Missing updates from sources: {updates_missing}")
+        else:
+            self._missing_ones.clear()
         updates = {}
         for sr in self._sources_received:
             if self._role == "trainer" and len(self._sources_received) > 1 and sr == self._addr:  # if trainer node ignore self updt if has received udpate from server

@@ -29,11 +29,16 @@ class ControlAction(Enum):
     WEAK_LINK = nebula_pb2.ControlMessage.Action.WEAK_LINK
 
 
+class ReputationAction(Enum):
+    SHARE = nebula_pb2.ReputationMessage.Action.SHARE
+
+
 ACTION_CLASSES = {
     "connection": ConnectionAction,
     "federation": FederationAction,
     "discovery": DiscoveryAction,
     "control": ControlAction,
+    "reputation": ReputationAction,
 }
 
 

@@ -119,6 +119,7 @@ class Aggregator(ABC):
         await self.us.stop_notifying_updates()
         updates = await self.us.get_round_updates()
         missing_nodes = await self.us.get_round_missing_nodes()
+
         if missing_nodes:
             logging.info(f"🔄  get_aggregation | Aggregation incomplete, missing models from: {missing_nodes}")
         else:

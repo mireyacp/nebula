@@ -2,10 +2,10 @@ import asyncio
 import collections
 import logging
 import sys
-from typing import TYPE_CHECKING
-
+import time
 import requests
 
+from typing import TYPE_CHECKING
 from nebula.core.eventmanager import EventManager
 from nebula.core.nebulaevents import MessageEvent
 from nebula.core.network.connection import Connection
@@ -62,7 +62,7 @@ class CommunicationsManager:
         self.stop_network_engine = asyncio.Event()
         self.loop = asyncio.get_event_loop()
         max_concurrent_tasks = 5
-        self.semaphore_send_model = asyncio.Semaphore(max_concurrent_tasks)
+        self.semaphore_send_model = asyncio.Semaphore(max_concurrent_tasks)        
 
     @property
     def engine(self):
@@ -117,7 +117,8 @@ class CommunicationsManager:
         await self.forwarder.forward(data, addr_from=addr_from)
 
     async def handle_message(self, message_event):
-        asyncio.create_task(EventManager.get_instance().publish(message_event))
+        #asyncio.create_task(EventManager.get_instance().publish(message_event))
+        await EventManager.get_instance().publish(message_event)
 
     async def handle_model_message(self, source, message):
         logging.info(f"🤖  handle_model_message | Received model from {source} with round {message.round}")
@@ -311,9 +312,12 @@ class CommunicationsManager:
     async def deploy_additional_services(self):
         logging.info("🌐  Deploying additional services...")
         await self._forwarder.start()
-        if self.config.participant["mobility_args"]["mobility"] and self.config.participant["network_args"]["simulation"]:
-                pass
-            # await self._discoverer.start()
+        if (
+            self.config.participant["mobility_args"]["mobility"]
+            and self.config.participant["network_args"]["simulation"]
+        ):
+            pass
+        # await self._discoverer.start()
         # await self._health.start()
         self._propagator.start()
 
@@ -321,7 +325,7 @@ class CommunicationsManager:
         try:
             await self.receive_messages_lock.acquire_async()
             if hash_message in self.received_messages_hashes:
-                # logging.info(f"❗️  handle_incoming_message | Ignoring message already received.")
+                logging.info(f"❗️  handle_incoming_message | Ignoring message already received.")
                 return False
             self.received_messages_hashes.append(hash_message)
             if len(self.received_messages_hashes) % 10000 == 0:
@@ -361,6 +365,7 @@ class CommunicationsManager:
                 if conn is None:
                     logging.info(f"❗️  Connection with {dest_addr} not found")
                     return
+
                 logging.info(
                     f"Sending model to {dest_addr} with round {round}: weight={weight} | size={sys.getsizeof(serialized_model) / (1024** 2) if serialized_model is not None else 0} MB"
                 )

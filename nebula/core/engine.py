@@ -2,18 +2,18 @@ import asyncio
 import logging
 import os
 import time
-
 import docker
 
 from nebula.addons.attacks.attacks import create_attack
 from nebula.addons.functions import print_msg_box
 from nebula.addons.reporter import Reporter
 from nebula.core.addonmanager import AddonManager
-from nebula.core.aggregation.aggregator import create_aggregator, create_target_aggregator
+from nebula.core.aggregation.aggregator import create_aggregator
 from nebula.core.eventmanager import EventManager
 from nebula.core.nebulaevents import AggregationEvent, RoundStartEvent, UpdateNeighborEvent, UpdateReceivedEvent
 from nebula.core.network.communications import CommunicationsManager
 from nebula.core.utils.locker import Locker
+from nebula.addons.reputation.reputation import Reputation
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -27,7 +27,6 @@ import sys
 
 from nebula.config.config import Config
 from nebula.core.training.lightning import Lightning
-from nebula.core.utils.helper import cosine_metric
 
 
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -117,32 +116,18 @@ class Engine:
             title="Logging information",
         )
 
-        self.with_reputation = self.config.participant["defense_args"]["with_reputation"]
-        self.is_dynamic_topology = self.config.participant["defense_args"]["is_dynamic_topology"]
-        self.is_dynamic_aggregation = self.config.participant["defense_args"]["is_dynamic_aggregation"]
-        self.target_aggregation = (
-            create_target_aggregator(config=self.config, engine=self) if self.is_dynamic_aggregation else None
-        )
-        msg = f"Reputation system: {self.with_reputation}\nDynamic topology: {self.is_dynamic_topology}\nDynamic aggregation: {self.is_dynamic_aggregation}"
-        msg += (
-            f"\nTarget aggregation: {self.target_aggregation.__class__.__name__}" if self.is_dynamic_aggregation else ""
-        )
-        print_msg_box(msg=msg, indent=2, title="Defense information")
-
         self.learning_cycle_lock = Locker(name="learning_cycle_lock", async_lock=True)
         self.federation_setup_lock = Locker(name="federation_setup_lock", async_lock=True)
         self.federation_ready_lock = Locker(name="federation_ready_lock", async_lock=True)
         self.round_lock = Locker(name="round_lock", async_lock=True)
-
         self.config.reload_config_file()
 
         self._cm = CommunicationsManager(engine=self)
         # Set the communication manager in the model (send messages from there)
         self.trainer.model.set_communication_manager(self._cm)
-
         self._reporter = Reporter(config=self.config, trainer=self.trainer, cm=self.cm)
-
         self._addon_manager = AddonManager(self, self.config)
+        self._reputation = Reputation(self, self.config)
 
     @property
     def cm(self):
@@ -295,16 +280,25 @@ class Engine:
         logging.info(f"📝  handle_federation_message | Trigger | Received start federation message from {source}")
         await self.create_trainer_module()
 
-    async def _federation_reputation_callback(self, source, message):
-        malicious_nodes = message.arguments  # List of malicious nodes
-        if self.with_reputation and len(malicious_nodes) > 0 and not self._is_malicious:
-            if self.is_dynamic_topology:
-                await self._disrupt_connection_using_reputation(malicious_nodes)
-            if self.is_dynamic_aggregation and self.aggregator != self.target_aggregation:
-                await self._dynamic_aggregator(
-                    self.aggregator.get_nodes_pending_models_to_aggregate(),
-                    malicious_nodes,
-                )
+    async def _reputation_share_callback(self, source, message):
+        try:
+            logging.info(f"handle_reputation_message | Trigger | Received reputation message from {source} | Node: {message.node_id} | Score: {message.score} | Round: {message.round}")
+
+            current_node = self.addr
+            nei = message.node_id
+
+            # Manage reputation
+            if current_node != nei:
+                key = (current_node, nei, message.round)
+
+                if key not in self._reputation.reputation_with_all_feedback:
+                    self._reputation.reputation_with_all_feedback[key] = []
+
+                self._reputation.reputation_with_all_feedback[key].append(message.score)
+                #logging.info(f"Reputation with all feedback: {self.reputation_with_all_feedback}")
+
+        except Exception as e:
+            logging.exception(f"Error handling reputation message: {e}")
 
     async def _federation_federation_models_included_callback(self, source, message):
         logging.info(f"📝  handle_federation_message | Trigger | Received aggregation finished message from {source}")
@@ -408,6 +402,7 @@ class Engine:
         await self._reporter.start()
         await self.cm.deploy_additional_services()
         await self._addon_manager.deploy_additional_services()
+        await self._reputation.setup()
         await asyncio.sleep(self.config.participant["misc_args"]["grace_time_connection"] // 2)
 
     async def deploy_federation(self):
@@ -536,24 +531,26 @@ class Engine:
     async def _learning_cycle(self):
         while self.round is not None and self.round < self.total_rounds:
             current_time = time.time()
-            rse = RoundStartEvent(self.round, current_time)
-            await EventManager.get_instance().publish_node_event(rse)
             print_msg_box(
                 msg=f"Round {self.round} of {self.total_rounds - 1} started (max. {self.total_rounds} rounds)",
                 indent=2,
                 title="Round information",
             )
-            self.trainer.on_round_start()
-            self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
             logging.info(f"Federation nodes: {self.federation_nodes}")
+            self.federation_nodes = await self.cm.get_addrs_current_connections(only_direct=True, myself=True)
+            expected_nodes = self.federation_nodes.copy()
+            rse = RoundStartEvent(self.round, current_time, expected_nodes)
+            await EventManager.get_instance().publish_node_event(rse)
+            self.trainer.on_round_start()   
+            logging.info(f"Expected nodes: {expected_nodes}")
             direct_connections = await self.cm.get_addrs_current_connections(only_direct=True)
             undirected_connections = await self.cm.get_addrs_current_connections(only_undirected=True)
             logging.info(f"Direct connections: {direct_connections} | Undirected connections: {undirected_connections}")
             logging.info(f"[Role {self.role}] Starting learning cycle...")
-            await self.aggregator.update_federation_nodes(self.federation_nodes)
+            await self.aggregator.update_federation_nodes(expected_nodes)
             await self._extended_learning_cycle()
-
             await self.get_round_lock().acquire_async()
+            
             print_msg_box(
                 msg=f"Round {self.round} of {self.total_rounds - 1} finished (max. {self.total_rounds} rounds)",
                 indent=2,
@@ -602,50 +599,6 @@ class Engine:
         functionalities. The method is called in the _learning_cycle method.
         """
         pass
-
-    def reputation_calculation(self, aggregated_models_weights):
-        cossim_threshold = 0.5
-        loss_threshold = 0.5
-
-        current_models = {}
-        for subnodes in aggregated_models_weights:
-            sublist = subnodes.split()
-            submodel = aggregated_models_weights[subnodes][0]
-            for node in sublist:
-                current_models[node] = submodel
-
-        malicious_nodes = []
-        reputation_score = {}
-        local_model = self.trainer.get_model_parameters()
-        untrusted_nodes = list(current_models.keys())
-        logging.info(f"reputation_calculation untrusted_nodes at round {self.round}: {untrusted_nodes}")
-
-        for untrusted_node in untrusted_nodes:
-            logging.info(f"reputation_calculation untrusted_node at round {self.round}: {untrusted_node}")
-            logging.info(f"reputation_calculation self.get_name() at round {self.round}: {self.get_name()}")
-            if untrusted_node != self.get_name():
-                untrusted_model = current_models[untrusted_node]
-                cossim = cosine_metric(local_model, untrusted_model, similarity=True)
-                logging.info(f"reputation_calculation cossim at round {self.round}: {untrusted_node}: {cossim}")
-                self.trainer._logger.log_data({f"Reputation/cossim_{untrusted_node}": cossim}, step=self.round)
-
-                avg_loss = self.trainer.validate_neighbour_model(untrusted_model)
-                logging.info(f"reputation_calculation avg_loss at round {self.round} {untrusted_node}: {avg_loss}")
-                self.trainer._logger.log_data({f"Reputation/avg_loss_{untrusted_node}": avg_loss}, step=self.round)
-                reputation_score[untrusted_node] = (cossim, avg_loss)
-
-                if cossim < cossim_threshold or avg_loss > loss_threshold:
-                    malicious_nodes.append(untrusted_node)
-                else:
-                    self._secure_neighbors.append(untrusted_node)
-
-        return malicious_nodes, reputation_score
-
-    async def send_reputation(self, malicious_nodes):
-        logging.info(f"Sending REPUTATION to the rest of the topology: {malicious_nodes}")
-        message = self.cm.create_message("federation", "reputation", arguments=[str(arg) for arg in (malicious_nodes)])
-        await self.cm.send_message_to_neighbors(message)
-
 
 class MaliciousNode(Engine):
     def __init__(
