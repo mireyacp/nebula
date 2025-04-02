@@ -125,7 +125,7 @@ clean-build:			## Clean build artifacts
 
 .PHONY: publish
 publish:			## Publish a release to PyPI
-	@echo "🚀 Publishing...""
+	@echo "🚀 Publishing..."
 	@$(UV) publish --token $(PYPI_TOKEN)
 
 .PHONY: build-and-publish

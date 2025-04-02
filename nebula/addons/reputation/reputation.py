@@ -1600,7 +1600,9 @@ class Reputation:
 
         for key in parameters_local.keys():
             if key in parameters_received:
-                diff = torch.abs(parameters_local[key] - parameters_received[key])
+                local_tensor = parameters_local[key].cpu()
+                received_tensor = parameters_received[key].cpu()
+                diff = torch.abs(local_tensor - received_tensor)
                 differences.extend(diff.flatten().tolist())
                 total_params += diff.numel()
 
@@ -1612,7 +1614,9 @@ class Reputation:
 
         for key in parameters_local.keys():
             if key in parameters_received:
-                diff = torch.abs(parameters_local[key] - parameters_received[key])
+                local_tensor = parameters_local[key].cpu()
+                received_tensor = parameters_received[key].cpu()
+                diff = torch.abs(local_tensor - received_tensor)
                 num_changed = torch.sum(diff > current_threshold).item()
                 changed_params += num_changed
                 if num_changed > 0:

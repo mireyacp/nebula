@@ -18,8 +18,8 @@ def cosine_metric2(
 
     for layer in model1:
         if layer in model2:
-            l1 = model1[layer].flatten()
-            l2 = model2[layer].flatten()
+            l1 = model1[layer].detach().to("cpu").flatten()
+            l2 = model2[layer].detach().to("cpu").flatten()
             if l1.shape != l2.shape:
                 # Adjust the shape of the smaller layer to match the larger layer
                 min_len = min(l1.shape[0], l2.shape[0])
@@ -29,9 +29,7 @@ def cosine_metric2(
             cos_similarities.append(cos_sim.item())
 
     if cos_similarities:
-        avg_cos_sim = torch.mean(torch.tensor(cos_similarities))
-        # result = torch.clamp(avg_cos_sim, min=0).item()
-        # return result
+        avg_cos_sim = torch.mean(torch.tensor(cos_similarities, device="cpu"))
         return avg_cos_sim.item() if similarity else (1 - avg_cos_sim.item())
     else:
         return None
@@ -80,8 +78,8 @@ def euclidean_metric(
 
     for layer in model1:
         if layer in model2:
-            l1 = model1[layer].flatten().float()
-            l2 = model2[layer].flatten().float()
+            l1 = model1[layer].detach().to("cpu").flatten().float()
+            l2 = model2[layer].detach().to("cpu").flatten().float()
 
             if standardized:
                 std_l1, std_l2 = l1.std(), l2.std()
@@ -100,7 +98,7 @@ def euclidean_metric(
                 distances.append(distance.item())
 
     if distances:
-        avg_distance = torch.mean(torch.tensor(distances, dtype=torch.float32))
+        avg_distance = torch.mean(torch.tensor(distances, dtype=torch.float32, device="cpu"))
         return avg_distance.item() if not torch.isnan(avg_distance) else 0.0
     else:
         return None
@@ -119,8 +117,8 @@ def minkowski_metric(
 
     for layer in model1:
         if layer in model2:
-            l1 = model1[layer].flatten().float()
-            l2 = model2[layer].flatten().float()
+            l1 = model1[layer].detach().to("cpu").flatten().float()
+            l2 = model2[layer].detach().to("cpu").flatten().float()
 
             distance = torch.norm(l1 - l2, p=p)
             if similarity:
@@ -131,7 +129,7 @@ def minkowski_metric(
                 distances.append(distance.item())
 
     if distances:
-        avg_distance = torch.mean(torch.tensor(distances, dtype=torch.float32))
+        avg_distance = torch.mean(torch.tensor(distances, dtype=torch.float32, device="cpu"))
         return avg_distance.item() if not torch.isnan(avg_distance) else 0.0
     else:
         return None
@@ -149,8 +147,8 @@ def manhattan_metric(
 
     for layer in model1:
         if layer in model2:
-            l1 = model1[layer].flatten().float()
-            l2 = model2[layer].flatten().float()
+            l1 = model1[layer].detach().to("cpu").flatten().float()
+            l2 = model2[layer].detach().to("cpu").flatten().float()
 
             distance = torch.norm(l1 - l2, p=1)
             if similarity:
@@ -161,7 +159,7 @@ def manhattan_metric(
                 distances.append(distance.item())
 
     if distances:
-        avg_distance = torch.mean(torch.tensor(distances, dtype=torch.float32))
+        avg_distance = torch.mean(torch.tensor(distances, dtype=torch.float32, device="cpu"))
         return avg_distance.item()
     else:
         return None
@@ -179,8 +177,8 @@ def pearson_correlation_metric(
 
     for layer in model1:
         if layer in model2:
-            l1 = model1[layer].flatten().float()
-            l2 = model2[layer].flatten().float()
+            l1 = model1[layer].detach().to("cpu").flatten().float()
+            l2 = model2[layer].detach().to("cpu").flatten().float()
 
             if l1.shape != l2.shape:
                 min_len = min(l1.shape[0], l2.shape[0])
@@ -219,8 +217,8 @@ def jaccard_metric(
 
     for layer in model1:
         if layer in model2:
-            l1 = model1[layer].flatten().float()
-            l2 = model2[layer].flatten().float()
+            l1 = model1[layer].detach().to("cpu").flatten().float()
+            l2 = model2[layer].detach().to("cpu").flatten().float()
 
             intersection = torch.sum(torch.min(l1, l2))
             union = torch.sum(torch.max(l1, l2))
@@ -232,24 +230,23 @@ def jaccard_metric(
                 jaccard_scores.append(1 - jaccard_sim.item())
 
     if jaccard_scores:
-        avg_jaccard = torch.mean(torch.tensor(jaccard_scores, dtype=torch.float32))
+        avg_jaccard = torch.mean(torch.tensor(jaccard_scores, dtype=torch.float32, device="cpu"))
         return avg_jaccard.item()
     else:
         return None
 
 
 def normalise_layers(untrusted_params, trusted_params):
-    trusted_norms = dict([k, torch.norm(trusted_params[k].data.view(-1).float())] for k in trusted_params.keys())
+    trusted_norms = dict([k, torch.norm(trusted_params[k].data.to("cpu").view(-1).float())] for k in trusted_params.keys())
 
     normalised_params = copy.deepcopy(untrusted_params)
 
     state_dict = copy.deepcopy(untrusted_params)
     for layer in untrusted_params:
-        layer_norm = torch.norm(state_dict[layer].data.view(-1).float())
+        layer_norm = torch.norm(state_dict[layer].data.to("cpu").view(-1).float())
         scaling_factor = min(layer_norm / trusted_norms[layer], 1)
         logging.debug(f"Layer: {layer} ScalingFactor {scaling_factor}")
-        # logging.info("Scaling client {} layer {} with factor {}".format(client, layer, scaling_factor))
-        normalised_layer = torch.mul(state_dict[layer], scaling_factor)
+        normalised_layer = torch.mul(state_dict[layer].to("cpu"), scaling_factor)
         normalised_params[layer] = normalised_layer
 
     return normalised_params
