@@ -613,7 +613,7 @@
                             <i class="fa fa-lock"></i>
                         </label>
                     </h5>
-                    <h5 class="step-title">With reputation</h5>
+                    <h5 class="step-title">Enable/Disable Reputation</h5>
                     <div class="form-check form-switch" style="margin-left: 23px;">
                         <input class="form-check-input" type="checkbox" id="reputationSwitch" style="display: inline; width: 80px; height: 30px;">
                     </div>
@@ -636,11 +636,18 @@
                     </div>
                     <div id="reputation-metrics" style="display:none;">
                         <h5 class="step-title">Reputation Metrics</h5>
+                        <p>Model-based metrics</p>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="model-similarity" name="modelSimilarity">
                             <label class="form-check-label" for="model-similarity">Model Similarity</label>
                             <input class="form-control weight-input" type="number" id="weight-model-similarity" name="weightModelSimilarity" step="0.01" value="0" placeholder="Weight to model similarity" style="display: none; width: 30%; margin-top:2px;">
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="fraction-parameters-changed" name="fractionParametersChanged" >
+                            <label class="form-check-label" for="fraction-parameters-changed">Fraction Parameters Changed</label>
+                            <input class="form-control weight-input" type="number" id="weight-fraction-parameters-changed" name="weightFractionParametersChanged" step="0.01" value="0" placeholder="Weight to fraction paremeters changed" style="display: none; width: 30%; margin-top:2px;">
+                        </div>
+                        <p>Communication-based metrics</p>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="num-messages" name="numMessages">
                             <label class="form-check-label" for="num-messages">Number of Messages</label>
@@ -650,11 +657,6 @@
                             <input class="form-check-input" type="checkbox" id="model-arrival-latency" name="modelArrivalLatency">
                             <label class="form-check-label" for="model-arrival-latency">Model Arrival Latency</label>
                             <input class="form-control weight-input" type="number" id="weight-model-arrival-latency" name="weightModelArrivalLatency" step="0.01" value="0" placeholder="Weight to model arrival latency" style="display: none; width: 30%; margin-top:2px;">
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="fraction-parameters-changed" name="fractionParametersChanged" >
-                            <label class="form-check-label" for="fraction-parameters-changed">Fraction Parameters Changed</label>
-                            <input class="form-control weight-input" type="number" id="weight-fraction-parameters-changed" name="weightFractionParametersChanged" step="0.01" value="0" placeholder="Weight to fraction paremeters changed" style="display: none; width: 30%; margin-top:2px;">
                         </div>
                         <p id="weight-warning" style="color: red; display: none;">Total weight must not exceed 1.</p>
                     </div>
