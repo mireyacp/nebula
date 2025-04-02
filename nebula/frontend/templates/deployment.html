@@ -608,7 +608,7 @@
                <!-- Advanced Defense -->
                <div class="form-group row container-shadow tiny grey">
                     <h5 class="step-number">Defense <i class="fa fa-wrench"></i>
-                        <input type="checkbox" id="defense-lock" onchange="lock('reputationSwitch', 'initial-reputation', 'weighting-factor', 'model-similarity', 'num-messages', 'model-arrival-latency', 'fraction-params-changed', checked)" style="display: none;">
+                        <input type="checkbox" id="defense-lock" onchange="lock('reputationSwitch', 'initial-reputation', 'weighting-factor', 'model-similarity', 'num-messages', 'model-arrival-latency', 'fraction-parameters-changed', checked)" style="display: none;">
                         <label for="defense-lock" class="icon-container" style="float: right;">
                             <i class="fa fa-lock"></i>
                         </label>
@@ -652,9 +652,9 @@
                             <input class="form-control weight-input" type="number" id="weight-model-arrival-latency" name="weightModelArrivalLatency" step="0.01" value="0" placeholder="Weight to model arrival latency" style="display: none; width: 30%; margin-top:2px;">
                         </div>
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="fraction-params-changed" name="fractionParametersChanged" >
-                            <label class="form-check-label" for="fraction-params-changed">Fraction Parameters Changed</label>
-                            <input class="form-control weight-input" type="number" id="weight-fraction-params-changed" name="weightFractionParametersChanged" step="0.01" value="0" placeholder="Weight to fraction paremeters changed" style="display: none; width: 30%; margin-top:2px;">
+                            <input class="form-check-input" type="checkbox" id="fraction-parameters-changed" name="fractionParametersChanged" >
+                            <label class="form-check-label" for="fraction-parameters-changed">Fraction Parameters Changed</label>
+                            <input class="form-control weight-input" type="number" id="weight-fraction-parameters-changed" name="weightFractionParametersChanged" step="0.01" value="0" placeholder="Weight to fraction paremeters changed" style="display: none; width: 30%; margin-top:2px;">
                         </div>
                         <p id="weight-warning" style="color: red; display: none;">Total weight must not exceed 1.</p>
                     </div>
@@ -1150,14 +1150,14 @@
                 "model_similarity": document.getElementById("model-similarity").checked,
                 "num_messages": document.getElementById("num-messages").checked,
                 "model_arrival_latency": document.getElementById("model-arrival-latency").checked,
-                "fraction_parameters_changed": document.getElementById("fraction-params-changed").checked
+                "fraction_parameters_changed": document.getElementById("fraction-parameters-changed").checked
             }
             data["initial_reputation"] = document.getElementById("initial-reputation").value
             data["weighting_factor"] = document.getElementById("weighting-factor").value
             data["weight_model_arrival_latency"] = document.getElementById("weight-model-arrival-latency").value
             data["weight_model_similarity"] = document.getElementById("weight-model-similarity").value
             data["weight_num_messages"] = document.getElementById("weight-num-messages").value
-            data["weight_fraction_params_changed"] = document.getElementById("weight-fraction-params-changed").value
+            data["weight_fraction_params_changed"] = document.getElementById("weight-fraction-parameters-changed").value
             // Step 14
             data["random_geo"] = document.getElementById("random-geo-btn").checked ? true : false
             data["latitude"] = parseFloat(document.getElementById("latitude").value)
@@ -1301,7 +1301,7 @@
                     document.getElementById("weight-model-arrival-latency").value = data["weight_model_arrival_latency"];
                     document.getElementById("weight-model-similarity").value = data["weight_model_similarity"];
                     document.getElementById("weight-num-messages").value = data["weight_num_messages"];
-                    document.getElementById("weight-fraction-params-changed").value = data["weight_fraction_params_changed"];
+                    document.getElementById("weight-fraction-parameters-changed").value = data["weight_fraction_params_changed"];
                 }
                 // Step 13
                 document.getElementById("random-geo-btn").checked = data["random_geo"];
