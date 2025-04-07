@@ -129,6 +129,17 @@ class NebulaPartitionHandler(Dataset, ABC):
                 self.targets = targets[:main_count] + targets_opt[:opt_count]
             self.length = len(self.data)
 
+            indices = np.arange(self.length)
+            np.random.shuffle(indices)
+            if isinstance(self.data, np.ndarray):
+                self.data = self.data[indices]
+            else:
+                self.data = [self.data[i] for i in indices]
+            if isinstance(self.targets, np.ndarray):
+                self.targets = self.targets[indices]
+            else:
+                self.targets = [self.targets[i] for i in indices]
+
         except Exception as e:
             logging_training.exception(f"Error setting data: {e}")
 
@@ -139,6 +150,9 @@ class NebulaPartitionHandler(Dataset, ABC):
             if typ == "pickle":
                 logging_training.info(f"Loading pickled object from {name}")
                 return pickle.loads(item[()].tobytes())
+            elif typ == "pickle_bytes":
+                logging_training.info(f"Loading compressed pickled bytes object from {name}")
+                return pickle.loads(item[()])
             else:
                 logging_training.warning(f"[NebulaPartitionHandler] Unknown type encountered: {typ} for item {name}")
                 return item[()]
@@ -402,8 +416,26 @@ class NebulaDataset:
         try:
             logging.info(f"Saving pickled object of type {type(obj)}")
             pickled = pickle.dumps(obj)
-            ds = file.create_dataset(name, data=np.void(pickled))
-            ds.attrs["__type__"] = "pickle"
+
+            size_in_mb = len(pickled) / (1024 * 1024)
+            logging.info(f"Pickled object size: {size_in_mb:.2f} MB")
+
+            if size_in_mb > 10:
+                logging.info(f"Large object detected ({size_in_mb:.2f} MB). Using chunked storage with compression.")
+                data = np.frombuffer(pickled, dtype=np.uint8)
+                chunk_size = min(4 * 1024 * 1024, len(data) // 10)
+                chunk_length = max(1, chunk_size // data.itemsize)
+                ds = file.create_dataset(
+                    name,
+                    data=data,
+                    chunks=(chunk_length,),
+                    compression="lzf",
+                    shuffle=True,
+                )
+                ds.attrs["__type__"] = "pickle_bytes"
+            else:
+                ds = file.create_dataset(name, data=np.void(pickled))
+                ds.attrs["__type__"] = "pickle"
             logging.info(f"Saved pickled object of type {type(obj)} to {name}")
         except Exception as e:
             logging.exception(f"Error saving object to HDF5: {e}")
