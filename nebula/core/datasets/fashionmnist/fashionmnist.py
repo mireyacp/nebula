@@ -22,7 +22,7 @@ class FashionMNISTPartitionHandler(NebulaPartitionHandler):
 
         # FashionMNIST from torchvision returns a tuple (image, target)
         if isinstance(data, tuple):
-            img, target = data
+            img, _ = data
         else:
             img = data
 

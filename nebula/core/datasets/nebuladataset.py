@@ -90,7 +90,8 @@ class NebulaPartitionHandler(Dataset, ABC):
 
     def __getitem__(self, idx):
         data = self.data[idx]
-        target = self.targets[idx]
+        # Persist the modified targets (if any) during the training process
+        target = self.targets[idx] if hasattr(self, "targets") and self.targets is not None else None
         return data, target
 
     def set_data(self, data, targets, data_opt=None, targets_opt=None):
@@ -269,9 +270,7 @@ class NebulaPartition:
             self.test_set = self.handler(test_partition_file, "test", config=self.config)
             self.test_indices = list(range(len(self.test_set)))
 
-            self.local_test_set = self.handler(
-                test_partition_file, "local_test", config=self.config, empty=True
-            )
+            self.local_test_set = self.handler(test_partition_file, "local_test", config=self.config, empty=True)
             self.local_test_set.set_data(self.test_set.data, self.test_set.targets)
             self.local_test_indices = self.set_local_test_indices()
 

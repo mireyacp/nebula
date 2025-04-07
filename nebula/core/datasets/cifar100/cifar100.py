@@ -26,7 +26,7 @@ class CIFAR100PartitionHandler(NebulaPartitionHandler):
 
         # CIFAR100 from torchvision returns a tuple (image, target)
         if isinstance(data, tuple):
-            img, target = data
+            img, _ = data
         else:
             img = data
 

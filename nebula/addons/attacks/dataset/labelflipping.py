@@ -8,9 +8,9 @@ Function:
 """
 
 import copy
+import logging
 import random
-
-import torch
+import numpy as np
 
 from nebula.addons.attacks.dataset.datasetattack import DatasetAttack
 
@@ -87,30 +87,41 @@ class LabelFlippingAttack(DatasetAttack):
             - In targeted mode, labels that match `target_label` are directly changed to `target_changed_label`.
         """
         new_dataset = copy.deepcopy(dataset)
+        if not isinstance(new_dataset.targets, np.ndarray):
+            new_dataset.targets = np.array(new_dataset.targets)
+        else:
+            new_dataset.targets = new_dataset.targets.copy()
 
-        targets = torch.tensor(new_dataset.targets) if isinstance(new_dataset.targets, list) else new_dataset.targets
+        # logging.info(f"[{self.__class__.__name__}] First 20 labels before flipping: {new_dataset.targets[:20]}")
+        # logging.info(f"[{self.__class__.__name__}] First 20 indices before flipping: {indices[:20]}")
 
-        num_indices = len(indices)
-        class_list = list(set(targets.tolist()))
         if not targeted:
+            num_indices = len(indices)
             num_flipped = int(poisoned_percent * num_indices)
-            if num_indices == 0:
-                return new_dataset
-            if num_flipped > num_indices:
-                return new_dataset
-            flipped_indice = random.sample(indices, num_flipped)
-
-            for i in flipped_indice:
-                t = targets[i]
-                flipped = torch.tensor(random.sample(class_list, 1)[0])
-                while t == flipped:
-                    flipped = torch.tensor(random.sample(class_list, 1)[0])
-                targets[i] = flipped
+            if num_indices == 0 or num_flipped > num_indices:
+                return
+            flipped_indices = random.sample(indices, num_flipped)
+            class_list = list(set(new_dataset.targets.tolist()))
+            for i in flipped_indices:
+                current_label = new_dataset.targets[i]
+                new_label = random.choice(class_list)
+                while new_label == current_label:
+                    new_label = random.choice(class_list)
+                new_dataset.targets[i] = new_label
         else:
             for i in indices:
-                if int(targets[i]) == int(target_label):
-                    targets[i] = torch.tensor(target_changed_label)
-        new_dataset.targets = targets
+                if int(new_dataset.targets[i]) == target_label:
+                    new_dataset.targets[i] = target_changed_label
+
+            if target_label in new_dataset.targets:
+                logging.info(f"[{self.__class__.__name__}] Target label {target_label} still present after flipping.")
+            else:
+                logging.info(
+                    f"[{self.__class__.__name__}] Target label {target_label} successfully flipped to {target_changed_label}."
+                )
+
+        # logging.info(f"[{self.__class__.__name__}] First 20 labels after flipping: {new_dataset.targets[:20]}")
+
         return new_dataset
 
     def get_malicious_dataset(self):
