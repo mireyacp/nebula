@@ -11,6 +11,7 @@ Functions:
 """
 
 import copy
+import logging
 import random
 
 import numpy as np
@@ -61,7 +62,7 @@ class SamplePoisoningAttack(DatasetAttack):
         self.poisoned_ratio = float(attack_params["poisoned_ratio"])
         self.targeted = attack_params["targeted"]
         self.target_label = int(attack_params["target_label"])
-        self.noise_type = attack_params["noise_type"]
+        self.noise_type = attack_params["noise_type"].lower()
 
     def apply_noise(self, t, noise_type, poisoned_ratio):
         """
@@ -97,7 +98,7 @@ class SamplePoisoningAttack(DatasetAttack):
         elif noise_type == "nlp_rawdata":
             return self.poison_to_nlp_rawdata(t, poisoned_ratio)
         else:
-            print("ERROR: poison attack type not supported.")
+            logging.info(f"ERROR: noise_type '{noise_type}' not supported in data poison attack.")
             return t
 
     def datapoison(
