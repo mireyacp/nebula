@@ -639,7 +639,7 @@ class ScenarioManagement:
             )
         elif dataset_name == "EMNIST":
             dataset = EMNISTDataset(
-                num_classes=10,
+                num_classes=47,
                 partitions_number=self.n_nodes,
                 iid=self.scenario.iid,
                 partition=self.scenario.partition_selection,
