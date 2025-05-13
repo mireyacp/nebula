@@ -297,11 +297,11 @@
 <script type="module" src="{{ url_for('static', path='js/dashboard/dashboard.js') }}"></script>
 
 {% if scenario_running %}
-<div class="scenario-running-indicator">
-    <div class="spinner"></div>
-    <div>
-        <div class="fw-bold">Scenario Running</div>
-        <div class="small text-muted">{{ scenario_running[0] }}</div>
+<div class="notification warning" style="position: fixed; top: 6rem; right: 2rem; z-index: 1000;">
+    <div class="spinner" style="width: 1.5rem; height: 1.5rem; border: 3px solid rgba(255, 193, 7, 0.3); border-top-color: #ffc107; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    <div class="content">
+        <div class="title">Scenario Running</div>
+        <div class="message">{{ scenario_running[0] }}</div>
     </div>
 </div>
 {% endif %}

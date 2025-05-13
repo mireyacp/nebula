@@ -60,7 +60,7 @@ const NotesManager = {
                 showAlert('success', 'Notes saved successfully');
             } else {
                 if (data.code === 401) {
-                    showAlert('info', 'Some functionalities are disabled in the demo version. Please, log in to access all functionalities.');
+                    showAlert('info', 'Some functionalities are disabled in the demo version.');
                 } else {
                     showAlert('error', 'Failed to save notes');
                 }

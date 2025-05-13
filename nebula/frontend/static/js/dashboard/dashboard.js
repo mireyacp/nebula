@@ -19,7 +19,7 @@ const Dashboard = {
     },
 
     checkDemoMode() {
-        showAlert('info', 'Some functionalities are disabled in the demo version. Please, log in to access all functionalities.');
+        showAlert('info', 'Some functionalities are disabled in the demo version.');
     }
 };
 

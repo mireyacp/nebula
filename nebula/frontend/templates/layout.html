@@ -71,19 +71,62 @@
 
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-CJMRTGSHND"></script>
     <script>
-        function showAlert(category, message) {
-            // Create the alert element
-            const alert = document.createElement('div');
-            alert.classList.add('alert', `alert-${category}`, 'alert-dismissible', 'fade', 'show');
-            alert.setAttribute('role', 'alert');
-            alert.innerHTML = `
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                ${message}
+        function showAlert(category, message, title = null) {
+            // Create the notification element
+            const notification = document.createElement('div');
+            notification.classList.add('notification', category);
+            
+            // Set icon based on category
+            let icon = '';
+            switch(category) {
+                case 'success':
+                    icon = 'fa-check-circle';
+                    break;
+                case 'warning':
+                    icon = 'fa-exclamation-triangle';
+                    break;
+                case 'danger':
+                    icon = 'fa-times-circle';
+                    break;
+                case 'info':
+                    icon = 'fa-info-circle';
+                    break;
+            }
+            
+            // Create notification content
+            notification.innerHTML = `
+                <i class="fa ${icon} icon"></i>
+                <div class="content">
+                    ${title ? `<div class="title">${title}</div>` : ''}
+                    <div class="message">${message}</div>
+                </div>
+                <button class="close" aria-label="Close">
+                    <i class="fa fa-times"></i>
+                </button>
             `;
-
-            // Append the alert in the top of the page
-            const container = document.querySelector('.alerts');
-            container.insertBefore(alert, container.firstChild);
+            
+            // Add to container
+            const container = document.getElementById('notification-container');
+            container.appendChild(notification);
+            
+            // Add click handler for close button
+            const closeBtn = notification.querySelector('.close');
+            closeBtn.addEventListener('click', () => {
+                notification.classList.add('closing');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            });
+            
+            // Auto remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.classList.add('closing');
+                    setTimeout(() => {
+                        notification.remove();
+                    }, 300);
+                }
+            }, 5000);
         }
     </script>
 
@@ -207,8 +250,7 @@
     </header>
 
     <main id="main">
-        <div class="container alerts"></div>
-        <!-- <h1 id="page-title">{% block page_title %}{% endblock %}</h1> -->
+        <div id="notification-container"></div>
         {% block body %}{% endblock %}
         <button type="button" id="btn-up" class="btn btn-dark" title="Go to top"><i class="fa fa-arrow-up"></i></button>
     </main>
