@@ -138,7 +138,7 @@ const UIControls = (function() {
 
             const imageName = imageMap[partitionSelect.value];
             if (imageName) {
-                methodtipImage.src = `/static/images/${imageName}`;
+                methodtipImage.src = `/platform/static/images/${imageName}`;
                 methodtipImage.style.display = "block";
             }
         });
@@ -444,7 +444,7 @@ const UIControls = (function() {
         const participantImg = document.createElement("img");
         participantImg.id = `participant-img-${index}`;
         participantImg.setAttribute("data-id", index.toString());
-        participantImg.src = "/static/images/device.png";
+        participantImg.src = "/platform/static/images/device.png";
         participantImg.width = 50;
         participantImg.height = 50;
         participantImg.style.marginRight = "10px";

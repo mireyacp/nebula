@@ -19,9 +19,6 @@ const ScenarioManager = (function() {
         updateScenariosPosition(true);
     }
 
-    // Don't call initializeScenarios immediately
-    // It will be called after all modules are initialized
-
     function collectScenarioData() {
         const topologyData = window.TopologyManager.getData();
         const nodes = {};
