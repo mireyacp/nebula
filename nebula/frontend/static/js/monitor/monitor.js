@@ -13,6 +13,7 @@ class Monitor {
             links: []
         };
         this.nodeTimestamps = new Map(); // Track last update time for each node
+        this.nodePositions = new Map(); // Track node positions
         
         this.initializeMap();
         this.initializeGraph();
@@ -84,7 +85,6 @@ class Monitor {
             .backgroundColor('#ffffff')
             .nodeId('ipport')
             .nodeLabel(node => this.createNodeLabel(node))
-            .onNodeClick(node => this.handleNodeClick(node))
             .nodeThreeObject(node => this.createNodeObject(node))
             .linkSource('source')
             .linkTarget('target')
@@ -99,37 +99,50 @@ class Monitor {
             .linkDirectionalParticles(2)
             .linkDirectionalParticleSpeed(0.005)
             .linkDirectionalParticleWidth(2)
-            .d3AlphaDecay(0.01)  // Slower decay for smoother updates
-            .d3VelocityDecay(0.3)  // Less damping for more dynamic movement
-            .warmupTicks(100)  // Add warmup for better initial layout
-            .cooldownTicks(100)  // Add cooldown for smoother transitions
-            .d3Force('center', d3.forceCenter().strength(0))  // Even stronger center force
-            .d3Force('charge', d3.forceManyBody().strength(0))  // Reduced repulsion
-            .d3Force('link', d3.forceLink().id(d => d.ipport).distance(30));  // Reduced link distance
+            .d3AlphaDecay(0)  // Disable automatic decay
+            .d3VelocityDecay(0)  // Disable velocity decay
+            .warmupTicks(0)  // Disable warmup
+            .cooldownTicks(0)  // Disable cooldown
+            .d3Force('center', null)  // Disable center force
+            .d3Force('charge', null)  // Disable charge force
+            .d3Force('link', d3.forceLink().id(d => d.ipport).distance(50).strength(1));  // Enable link force for visualization
 
+        // Set initial camera position
         this.Graph.cameraPosition({ x: 0, y: 0, z: 300 }, { x: 0, y: 0, z: 0 }, 0);
 
+        // Disable navigation info
         const navInfo = document.getElementsByClassName("scene-nav-info")[0];
         if (navInfo) {
             navInfo.style.display = 'none';
         }
 
+        // Handle window resize
         window.addEventListener("resize", () => {
             this.Graph.width(document.getElementById('3d-graph').offsetWidth);
         });
     }
 
     layoutNodes(nodes) {
-        const radius = 50; // Radius of the circle
+        const radius = 50;
         const center = { x: 0, y: 0, z: 0 };
         
+        console.log('Layouting nodes:', nodes);
+        
         nodes.forEach((node, i) => {
-            const angle = (i / nodes.length) * 2 * Math.PI;
-            // Add a small offset to ensure nodes don't overlap at center
-            const offset = 5;
-            node.x = center.x + (radius + offset) * Math.cos(angle);
-            node.y = center.y + (radius + offset) * Math.sin(angle);
-            node.z = center.z;
+            // Calculate angle based on node index
+            const angle = (2 * Math.PI * i) / nodes.length;
+            
+            // Position nodes in a circle on the x-y plane
+            node.x = center.x + radius * Math.cos(angle);
+            node.y = center.y + radius * Math.sin(angle);
+            node.z = center.z;  // Keep all nodes at the same z-level initially
+
+            // Store the fixed position
+            node.fx = node.x;
+            node.fy = node.y;
+            node.fz = node.z;
+            
+            console.log(`Node ${node.ipport} positioned at:`, { x: node.x, y: node.y, z: node.z });
         });
         
         return nodes;
@@ -297,28 +310,34 @@ class Monitor {
     updateGraphData(data) {
         const nodeId = `${data.ip}:${data.port}`;
         console.log('Updating graph data for node:', nodeId);
+        console.log('Current graph data:', {
+            nodes: this.gData.nodes,
+            links: this.gData.links
+        });
         
         // Add or update node - ensure no duplication
         const existingNodeIndex = this.gData.nodes.findIndex(n => n.ipport === nodeId);
         if (existingNodeIndex === -1) {
             // Only add if node doesn't exist
-            this.gData.nodes.push({
+            const newNode = {
                 id: data.idx,
                 ip: data.ip,
                 port: data.port,
                 ipport: nodeId,
                 role: data.role,
                 color: this.getNodeColor({ ipport: nodeId, role: data.role })
-            });
-            console.log('Added new node:', nodeId);
+            };
+            console.log('Adding new node to graph:', newNode);
+            this.gData.nodes.push(newNode);
         } else {
             // Update existing node
-            this.gData.nodes[existingNodeIndex] = {
+            const updatedNode = {
                 ...this.gData.nodes[existingNodeIndex],
                 role: data.role,
                 color: this.getNodeColor({ ipport: nodeId, role: data.role })
             };
-            console.log('Updated existing node:', nodeId);
+            console.log('Updating existing node in graph:', updatedNode);
+            this.gData.nodes[existingNodeIndex] = updatedNode;
         }
 
         // Helper function to get IP from source/target
@@ -434,16 +453,6 @@ class Monitor {
         </p>`;
     }
 
-    handleNodeClick(node) {
-        const distance = 40;
-        const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z);
-        const newPos = node.x || node.y || node.z
-            ? { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }
-            : { x: 0, y: 0, z: distance };
-        
-        this.Graph.cameraPosition(newPos, node, 3000);
-    }
-
     createNodeObject(node) {
         const group = new THREE.Group();
         const nodeColor = this.getNodeColor(node);
@@ -537,11 +546,13 @@ class Monitor {
                 return;
             }
 
+            console.log('Handling node update:', data);
+
             // Update timestamp for this node
             const nodeId = `${data.ip}:${data.port}`;
             this.nodeTimestamps.set(nodeId, Date.now());
 
-            // Update node status
+            // First update the table to show changes immediately
             this.updateNode(data);
 
             // Update graph data
@@ -597,6 +608,11 @@ class Monitor {
 
             // Update the graph
             this.updateGraph();
+
+            // Process map updates immediately
+            this.processUpdate(data);
+
+            console.log('Node update completed successfully');
         } catch (error) {
             console.error('Error handling node update:', error);
         }
@@ -657,8 +673,45 @@ class Monitor {
     }
 
     updateNode(data) {
-        const nodeRow = document.querySelector(`#node-${data.uid}`);
-        if (!nodeRow) return;
+        let nodeRow = document.querySelector(`#node-${data.uid}`);
+        
+        // If row doesn't exist, create it
+        if (!nodeRow) {
+            console.log('Creating new row for node:', data.uid);
+            const tableBody = document.querySelector('#table-nodes tbody');
+            if (!tableBody) {
+                console.error('Table body not found');
+                return;
+            }
+
+            // Create new row
+            nodeRow = document.createElement('tr');
+            nodeRow.id = `node-${data.uid}`;
+            
+            // Create cells
+            const cells = [
+                { class: 'text-center', content: '' }, // IDX
+                { class: 'text-center', content: '' }, // IP
+                { class: 'text-center', content: '' }, // Role
+                { class: 'text-center', content: '' }, // Round
+                { class: 'text-center', content: '' }, // Behavior
+                { class: 'text-center', content: '' }, // Status
+                { class: 'text-center', content: '' }, // Federation
+                { class: 'text-center', content: '' }  // Timestamp
+            ];
+
+            // Add cells to row
+            cells.forEach(cell => {
+                const td = document.createElement('td');
+                td.className = cell.class;
+                td.innerHTML = cell.content;
+                nodeRow.appendChild(td);
+            });
+
+            // Add row to table
+            tableBody.appendChild(nodeRow);
+            console.log('New row created for node:', data.uid);
+        }
 
         const nodeId = `${data.ip}:${data.port}`;  // Use full IP:port as nodeId
         const wasOffline = this.offlineNodes.has(nodeId);
@@ -692,49 +745,68 @@ class Monitor {
             }
         }
 
-        // Update all table cells
-        // Update IDX
-        const idxCell = nodeRow.querySelector('td:nth-child(1)');
-        if (idxCell) {
-            idxCell.textContent = data.idx;
-        }
+        // Update all table cells with latest data
+        try {
+            // Update IDX
+            const idxCell = nodeRow.querySelector('td:nth-child(1)');
+            if (idxCell) {
+                idxCell.textContent = data.idx || '';
+            }
 
-        // Update IP
-        const ipCell = nodeRow.querySelector('td:nth-child(2)');
-        if (ipCell) {
-            ipCell.textContent = data.ip;
-        }
+            // Update IP
+            const ipCell = nodeRow.querySelector('td:nth-child(2)');
+            if (ipCell) {
+                ipCell.textContent = data.ip || '';
+            }
 
-        // Update Role
-        const roleCell = nodeRow.querySelector('td:nth-child(3)');
-        if (roleCell) {
-            roleCell.innerHTML = `
-                <span class="badge bg-info-subtle text-black">
-                    <i class="fa fa-server me-1"></i>${data.role}
-                </span>
-            `;
-        }
+            // Update Role
+            const roleCell = nodeRow.querySelector('td:nth-child(3)');
+            if (roleCell) {
+                roleCell.innerHTML = `
+                    <span class="badge bg-info-subtle text-black">
+                        <i class="fa fa-server me-1"></i>${data.role || 'Unknown'}
+                    </span>
+                `;
+            }
 
-        // Update Round
-        const roundCell = nodeRow.querySelector('td:nth-child(4)');
-        if (roundCell) {
-            roundCell.textContent = data.round;
-        }
+            // Update Round
+            const roundCell = nodeRow.querySelector('td:nth-child(4)');
+            if (roundCell) {
+                roundCell.textContent = data.round || '0';
+            }
 
-        // Update Behavior
-        const behaviorCell = nodeRow.querySelector('td:nth-child(5)');
-        if (behaviorCell) {
-            behaviorCell.innerHTML = data.malicious === "True"
-                ? '<span class="badge bg-dark"><i class="fa fa-skull me-1"></i>Malicious</span>'
-                : '<span class="badge bg-secondary"><i class="fa fa-shield-alt me-1"></i>Benign</span>';
-        }
+            // Update Behavior
+            const behaviorCell = nodeRow.querySelector('td:nth-child(5)');
+            if (behaviorCell) {
+                behaviorCell.innerHTML = data.malicious === "True"
+                    ? '<span class="badge bg-dark"><i class="fa fa-skull me-1"></i>Malicious</span>'
+                    : '<span class="badge bg-secondary"><i class="fa fa-shield-alt me-1"></i>Benign</span>';
+            }
 
-        // Update Status
-        const statusCell = nodeRow.querySelector('td:nth-child(6)');
-        if (statusCell) {
-            statusCell.innerHTML = data.status 
-                ? '<span class="badge bg-success"><i class="fa fa-circle me-1"></i>Online</span>'
-                : '<span class="badge bg-danger"><i class="fa fa-circle me-1"></i>Offline</span>';
+            // Update Status
+            const statusCell = nodeRow.querySelector('td:nth-child(6)');
+            if (statusCell) {
+                statusCell.innerHTML = data.status 
+                    ? '<span class="badge bg-success"><i class="fa fa-circle me-1"></i>Online</span>'
+                    : '<span class="badge bg-danger"><i class="fa fa-circle me-1"></i>Offline</span>';
+            }
+
+            // Update Federation if present
+            const federationCell = nodeRow.querySelector('td:nth-child(7)');
+            if (federationCell && data.federation) {
+                federationCell.textContent = data.federation;
+            }
+
+            // Update Timestamp if present
+            const timestampCell = nodeRow.querySelector('td:nth-child(8)');
+            if (timestampCell && data.timestamp) {
+                const date = new Date(data.timestamp);
+                timestampCell.textContent = date.toLocaleString();
+            }
+
+            console.log('Table updated for node:', data.uid);
+        } catch (error) {
+            console.error('Error updating table cells:', error);
         }
 
         // Update map position
@@ -791,7 +863,6 @@ class Monitor {
 
     updateGraph(data) {
         if (data) {
-            // Update graph data with new node information
             this.updateGraphData(data);
         }
         
@@ -812,7 +883,6 @@ class Monitor {
             const sourceOffline = this.offlineNodes.has(sourceIP);
             const targetOffline = this.offlineNodes.has(targetIP);
             
-            // Remove link if either source or target is offline
             if (sourceOffline || targetOffline) {
                 console.log(`Removing link between ${sourceIP} and ${targetIP} due to offline node`);
                 return false;
@@ -831,12 +901,10 @@ class Monitor {
         this.gData.nodes.forEach(node => {
             if (!this.offlineNodes.has(node.ip)) {
                 const nodeId = node.ipport;
-                // Find all online neighbors
                 const onlineNeighbors = this.gData.nodes.filter(n => 
                     !this.offlineNodes.has(n.ip) && n.ipport !== nodeId
                 );
                 
-                // Add links to online neighbors if they don't exist
                 onlineNeighbors.forEach(neighbor => {
                     const linkExists = this.gData.links.some(link => 
                         (link.source === nodeId && link.target === neighbor.ipport) ||
@@ -847,26 +915,23 @@ class Monitor {
                         this.gData.links.push({
                             source: nodeId,
                             target: neighbor.ipport,
-                            value: this.randomFloatFromInterval(1.0, 1.3)
+                            value: 1.0
                         });
                     }
                 });
             }
         });
 
-        // Apply layout to nodes
+        // Apply fixed layout to nodes
         const layoutedNodes = this.layoutNodes([...this.gData.nodes]);
-        
+
         // Update the graph with new data
         this.Graph.graphData({
             nodes: layoutedNodes,
             links: this.gData.links
         });
 
-        // Reset the force simulation to ensure proper layout
-        this.Graph.d3ReheatSimulation();
-        
-        // Force a redraw
+        // Force a redraw to ensure links are visible
         this.Graph.refresh();
     }
 
@@ -921,20 +986,22 @@ class Monitor {
 
             if (isNaN(lat) || isNaN(lng)) {
                 console.warn('Invalid coordinates for node:', data.uid, 'lat:', data.latitude, 'lng:', data.longitude);
-                return;
+                // Use default coordinates if invalid
+                data.latitude = 38.023522;
+                data.longitude = -1.174389;
             }
 
             // Create validated node data
             const nodeData = {
                 ...data,
-                latitude: lat,
-                longitude: lng,
+                latitude: parseFloat(data.latitude),
+                longitude: parseFloat(data.longitude),
                 neighbors: data.neighbors || ""
             };
 
             console.log('Validated node data:', nodeData);
 
-            const newLatLng = new L.LatLng(lat, lng);
+            const newLatLng = new L.LatLng(nodeData.latitude, nodeData.longitude);
             
             // Parse neighbors string into array, handling both space and comma separators
             const neighborsIPs = nodeData.neighbors 
@@ -948,8 +1015,8 @@ class Monitor {
             this.updateDronePosition(
                 nodeData.uid, 
                 nodeData.ip, 
-                lat, 
-                lng, 
+                nodeData.latitude, 
+                nodeData.longitude, 
                 neighborsIPs, 
                 nodeData.neighbors_distance
             );
