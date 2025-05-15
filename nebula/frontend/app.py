@@ -641,52 +641,31 @@ async def nebula_dashboard_monitor(scenario_name: str, request: Request, session
     if scenario:
         nodes_list = list_nodes_by_scenario_name(scenario_name)
         if nodes_list:
-            nodes_config = []
-            nodes_status = []
+            formatted_nodes = []
             for node in nodes_list:
-                nodes_config.append((node[2], node[3], node[4]))  # IP, Port, Role
-                if datetime.datetime.now() - datetime.datetime.strptime(
-                    node[8], "%Y-%m-%d %H:%M:%S.%f"
-                ) > datetime.timedelta(seconds=25):
-                    nodes_status.append(False)
-                else:
-                    nodes_status.append(True)
-            nodes_table = zip(
-                [x[0] for x in nodes_list],  # UID
-                [x[1] for x in nodes_list],  # IDX
-                [x[2] for x in nodes_list],  # IP
-                [x[3] for x in nodes_list],  # Port
-                [x[4] for x in nodes_list],  # Role
-                [x[5] for x in nodes_list],  # Neighbors
-                [x[6] for x in nodes_list],  # Latitude
-                [x[7] for x in nodes_list],  # Longitude
-                [x[8] for x in nodes_list],  # Timestamp
-                [x[9] for x in nodes_list],  # Federation
-                [x[10] for x in nodes_list],  # Round
-                [x[11] for x in nodes_list],  # Scenario name
-                [x[12] for x in nodes_list],  # Run hash
-                [x[13] for x in nodes_list],  # Malicious
-                nodes_status,
-                strict=False,  # Status
-            )
+                # Calculate initial status based on timestamp
+                timestamp = datetime.datetime.strptime(node[8], "%Y-%m-%d %H:%M:%S.%f")
+                is_online = (datetime.datetime.now() - timestamp) <= datetime.timedelta(seconds=25)
+                
+                formatted_nodes.append({
+                    "uid": node[0],
+                    "idx": node[1],
+                    "ip": node[2],
+                    "port": node[3],
+                    "role": node[4],
+                    "neighbors": node[5],
+                    "latitude": node[6],
+                    "longitude": node[7],
+                    "timestamp": node[8],
+                    "federation": node[9],
+                    "round": str(node[10]),
+                    "scenario_name": node[11],
+                    "hash": node[12],
+                    "malicious": node[13],
+                    "status": is_online
+                })
 
-            topology_path = FileUtils.check_path(settings.config_dir, os.path.join(scenario_name, "topology.png"))
-            if os.path.exists(topology_path):
-                latest_participant_file_mtime = max([
-                    os.path.getmtime(
-                        os.path.join(
-                            settings.config_dir,
-                            scenario_name,
-                            f"participant_{node[1]}.json",
-                        )
-                    )
-                    for node in nodes_list
-                ])
-                if os.path.getmtime(topology_path) < latest_participant_file_mtime:
-                    update_topology(scenario[0], nodes_list, nodes_config)
-            else:
-                update_topology(scenario[0], nodes_list, nodes_config)
-
+            # For HTML response, return the template with basic data
             if request.url.path == f"/platform/dashboard/{scenario_name}/monitor":
                 return templates.TemplateResponse(
                     "monitor.html",
@@ -694,14 +673,15 @@ async def nebula_dashboard_monitor(scenario_name: str, request: Request, session
                         "request": request,
                         "scenario_name": scenario_name,
                         "scenario": scenario,
-                        "nodes": nodes_table,
+                        "nodes": [list(node.values()) for node in formatted_nodes],
                         "user_logged_in": session.get("user"),
                     },
                 )
+            # For API response, return the formatted node data
             elif request.url.path == f"/platform/api/dashboard/{scenario_name}/monitor":
                 return JSONResponse({
                     "scenario_status": scenario[5],
-                    "nodes_table": list(nodes_table),
+                    "nodes": formatted_nodes,
                     "scenario_name": scenario[0],
                     "scenario_title": scenario[3],
                     "scenario_description": scenario[4],
@@ -709,6 +689,7 @@ async def nebula_dashboard_monitor(scenario_name: str, request: Request, session
             else:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
         else:
+            # No nodes found
             if request.url.path == f"/platform/dashboard/{scenario_name}/monitor":
                 return templates.TemplateResponse(
                     "monitor.html",
@@ -723,7 +704,7 @@ async def nebula_dashboard_monitor(scenario_name: str, request: Request, session
             elif request.url.path == f"/platform/api/dashboard/{scenario_name}/monitor":
                 return JSONResponse({
                     "scenario_status": scenario[5],
-                    "nodes_table": [],
+                    "nodes": [],
                     "scenario_name": scenario[0],
                     "scenario_title": scenario[3],
                     "scenario_description": scenario[4],
@@ -731,6 +712,7 @@ async def nebula_dashboard_monitor(scenario_name: str, request: Request, session
             else:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     else:
+        # Scenario not found
         if request.url.path == f"/platform/dashboard/{scenario_name}/monitor":
             return templates.TemplateResponse(
                 "monitor.html",
@@ -816,6 +798,7 @@ async def nebula_update_node(scenario_name: str, request: Request):
                 "name": config["scenario_args"]["name"],
                 "status": True,
                 "neighbors_distance": neighbors_distance,
+                "malicious": str(config["device_args"]["malicious"])
             }
 
             try:

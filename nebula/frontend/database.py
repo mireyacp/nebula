@@ -337,9 +337,9 @@ async def update_node_record(
                         federation,
                         federation_round,
                         run_hash,
+                        malicious,
                         node_uid,
                         scenario,
-                        malicious,
                     ),
                 )
 

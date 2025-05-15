@@ -23,6 +23,7 @@ class Monitor {
         this.loadInitialData();
         
         this.startStaleNodeCheck();
+        this.startPeriodicStatusCheck();
     }
 
     initializeMap() {
@@ -164,7 +165,82 @@ class Monitor {
             })
             .then(data => {
                 console.log('Received initial data:', data);
-                this.processInitialData(data);
+                if (data.nodes && data.nodes.length > 0) {
+                    data.nodes.forEach(node => {
+                        const nodeData = {
+                            uid: node.uid,
+                            idx: node.idx,
+                            ip: node.ip,
+                            port: node.port,
+                            role: node.role,
+                            neighbors: node.neighbors,
+                            latitude: node.latitude,
+                            longitude: node.longitude,
+                            timestamp: node.timestamp,
+                            federation: node.federation,
+                            round: node.round,
+                            scenario_name: node.scenario_name,
+                            hash: node.hash,
+                            malicious: node.malicious,
+                            status: node.status
+                        };
+
+                        // Update offline nodes set
+                        if (!nodeData.status) {
+                            this.offlineNodes.add(nodeData.ip);
+                            console.log(`Node ${nodeData.ip}:${nodeData.port} marked as offline from initial data`);
+                        }
+
+                        // Update table
+                        this.updateTableRow(nodeData);
+
+                        // Update map
+                        this.updateQueue.push(nodeData);
+
+                        // Add to graph data
+                        const nodeId = `${nodeData.ip}:${nodeData.port}`;
+                        this.gData.nodes.push({
+                            id: nodeData.idx,
+                            ip: nodeData.ip,
+                            port: nodeData.port,
+                            ipport: nodeId,
+                            role: nodeData.role,
+                            malicious: nodeData.malicious,
+                            color: !nodeData.status ? '#ff0000' : this.getNodeColor({ ipport: nodeId, role: nodeData.role, malicious: nodeData.malicious })
+                        });
+                    });
+
+                    // Create links between online nodes
+                    data.nodes.forEach(sourceNode => {
+                        const sourceData = {
+                            ip: sourceNode.ip,
+                            port: sourceNode.port,
+                            status: sourceNode.status,
+                            neighbors: sourceNode.neighbors
+                        };
+
+                        if (sourceData.status && sourceData.neighbors) {
+                            const neighbors = sourceData.neighbors.split(/[\s,]+/).filter(ip => ip.trim() !== '');
+                            neighbors.forEach(neighbor => {
+                                const [neighborIP, neighborPort] = neighbor.split(':');
+                                const targetNode = data.nodes.find(n => n.ip === neighborIP && n.port === neighborPort);
+                                if (targetNode && targetNode.status) {
+                                    this.gData.links.push({
+                                        source: `${sourceData.ip}:${sourceData.port}`,
+                                        target: `${neighborIP}:${neighborPort}`,
+                                        value: this.randomFloatFromInterval(1.0, 1.3)
+                                    });
+                                }
+                            });
+                        }
+                    });
+
+                    // Process queue and update visualizations
+                    this.processQueue();
+                    this.updateGraph();
+                } else {
+                    console.warn('No nodes in initial data');
+                }
             })
             .catch(error => {
                 console.error('Error loading initial data:', error);
@@ -184,7 +260,6 @@ class Monitor {
         this.gData.links = [];
         this.droneMarkers = {};
         this.droneLines = {};
-        this.lineLayer.clearLayers();
         this.offlineNodes.clear(); // Clear offline nodes set
         this.nodeTimestamps.clear(); // Clear node timestamps
 
@@ -247,7 +322,8 @@ class Monitor {
                         port: nodeData.port,
                         ipport: uniqueNodeId,
                         role: nodeData.role,
-                        color: this.getNodeColor({ ipport: uniqueNodeId, role: nodeData.role })
+                        malicious: nodeData.malicious,
+                        color: this.getNodeColor({ ipport: uniqueNodeId, role: nodeData.role, malicious: nodeData.malicious })
                     });
                     console.log('Added unique node:', uniqueNodeId);
                 } else {
@@ -325,7 +401,8 @@ class Monitor {
                 port: data.port,
                 ipport: nodeId,
                 role: data.role,
-                color: this.getNodeColor({ ipport: nodeId, role: data.role })
+                malicious: data.malicious,
+                color: this.getNodeColor({ ipport: nodeId, role: data.role, malicious: data.malicious })
             };
             console.log('Adding new node to graph:', newNode);
             this.gData.nodes.push(newNode);
@@ -334,7 +411,8 @@ class Monitor {
             const updatedNode = {
                 ...this.gData.nodes[existingNodeIndex],
                 role: data.role,
-                color: this.getNodeColor({ ipport: nodeId, role: data.role })
+                malicious: data.malicious,
+                color: this.getNodeColor({ ipport: nodeId, role: data.role, malicious: data.malicious })
             };
             console.log('Updating existing node in graph:', updatedNode);
             this.gData.nodes[existingNodeIndex] = updatedNode;
@@ -491,6 +569,11 @@ class Monitor {
             return '#ff0000'; // Red color for offline nodes
         }
         
+        // Check if the node is malicious
+        if (node.malicious === "True" || node.malicious === "true") {
+            return '#000000'; // Black color for malicious nodes
+        }
+        
         switch(node.role) {
             case 'trainer': return '#7570b3';
             case 'aggregator': return '#d95f02';
@@ -564,13 +647,15 @@ class Monitor {
                     port: data.port,
                     ipport: nodeId,
                     role: data.role,
-                    color: this.getNodeColor({ ipport: nodeId, role: data.role })
+                    malicious: data.malicious,
+                    color: this.getNodeColor({ ipport: nodeId, role: data.role, malicious: data.malicious })
                 });
             } else {
                 this.gData.nodes[existingNodeIndex] = {
                     ...this.gData.nodes[existingNodeIndex],
                     role: data.role,
-                    color: this.getNodeColor({ ipport: nodeId, role: data.role })
+                    malicious: data.malicious,
+                    color: this.getNodeColor({ ipport: nodeId, role: data.role, malicious: data.malicious })
                 };
             }
 
@@ -611,6 +696,9 @@ class Monitor {
 
             // Process map updates immediately
             this.processUpdate(data);
+
+            // Check if all nodes are offline
+            this.checkAllNodesOffline();
 
             console.log('Node update completed successfully');
         } catch (error) {
@@ -673,6 +761,11 @@ class Monitor {
     }
 
     updateNode(data) {
+        if (!data || !data.uid) {
+            console.warn('Invalid or missing data for node update:', data);
+            return;
+        }
+
         let nodeRow = document.querySelector(`#node-${data.uid}`);
         
         // If row doesn't exist, create it
@@ -1372,6 +1465,328 @@ class Monitor {
         
         // Update map visualization
         this.updateAllRelatedLines(uid);
+    }
+
+    startPeriodicStatusCheck() {
+        console.log("Starting periodic status check");
+        this.checkNodeStatus();
+
+        setInterval(() => this.checkNodeStatus(), 5000);
+    }
+
+    async checkNodeStatus() {
+        try {
+            const response = await fetch(`/platform/api/dashboard/${this.scenarioName}/monitor`);
+            if (!response.ok) {
+                console.error('Failed to fetch node status');
+                return;
+            }
+            
+            const data = await response.json();
+            if (!data.nodes || data.nodes.length === 0) {
+                console.warn('No nodes in status check response');
+                return;
+            }
+
+            console.log('Received status check data:', data);
+
+            this.offlineNodes.clear();
+            data.nodes.forEach(node => {
+                const nodeData = {
+                    uid: node.uid,
+                    idx: node.idx,
+                    ip: node.ip,
+                    port: node.port,
+                    role: node.role,
+                    neighbors: node.neighbors,
+                    latitude: node.latitude,
+                    longitude: node.longitude,
+                    timestamp: node.timestamp,
+                    federation: node.federation,
+                    round: node.round,
+                    scenario_name: node.scenario_name,
+                    hash: node.hash,
+                    malicious: node.malicious,
+                    status: node.status
+                };
+
+                if (!nodeData.status) {
+                    this.offlineNodes.add(nodeData.ip);
+                    console.log(`Node ${nodeData.ip}:${nodeData.port} marked as offline from status check`);
+                }
+
+                // Update table row
+                console.log("Updating table row for node:", nodeData);
+                this.updateTableRow(nodeData);
+
+                // Update map marker if it exists
+                if (this.droneMarkers[nodeData.uid]) {
+                    this.updateDronePosition(
+                        nodeData.uid,
+                        nodeData.ip,
+                        parseFloat(nodeData.latitude),
+                        parseFloat(nodeData.longitude),
+                        nodeData.neighbors ? nodeData.neighbors.split(/[\s,]+/).filter(ip => ip.trim() !== '') : [],
+                        null
+                    );
+                }
+            });
+
+            this.updateGraphDataFromStatus(data.nodes);
+            
+            // Update all visualizations
+            this.updateGraph();
+            this.updateAllMarkers();
+            this.updateAllRelatedLines();
+            
+            // Check if all nodes are offline
+            this.checkAllNodesOffline();
+        } catch (error) {
+            console.error('Error in status check:', error);
+        }
+    }
+
+    updateTableRow(data) {
+        // Validate required data
+        if (!data || !data.uid) {
+            console.warn('Invalid or missing data for table row update:', data);
+            return;
+        }
+
+        let nodeRow = document.querySelector(`#node-${data.uid}`);
+        
+        // If row doesn't exist, create it
+        if (!nodeRow) {
+            console.log('Creating new row for node:', data.uid);
+            const tableBody = document.querySelector('#table-nodes tbody');
+            if (!tableBody) {
+                console.error('Table body not found');
+                return;
+            }
+
+            // Create new row
+            nodeRow = document.createElement('tr');
+            nodeRow.id = `node-${data.uid}`;
+            
+            // Create cells with initial values
+            const cells = [
+                { class: 'py-3', content: data.idx || '0' }, // IDX
+                { class: 'py-3', content: data.ip || '' }, // IP
+                { class: 'py-3', content: `
+                    <span class="badge bg-info-subtle text-black">
+                        <i class="fa fa-server me-1"></i>${data.role || 'Unknown'}
+                    </span>
+                ` }, // Role
+                { class: 'py-3', content: data.round || '0' }, // Round
+                { class: 'py-3', content: data.malicious === "True" || data.malicious === "true"
+                    ? '<span class="badge bg-dark"><i class="fa fa-skull me-1"></i>Malicious</span>'
+                    : '<span class="badge bg-secondary"><i class="fa fa-shield-alt me-1"></i>Benign</span>' }, // Behaviour
+                { class: 'py-3', content: data.status 
+                    ? '<span class="badge bg-success"><i class="fa fa-circle me-1"></i>Online</span>'
+                    : '<span class="badge bg-danger-subtle text-danger"><i class="fa fa-circle me-1"></i>Offline</span>' }, // Status
+                { class: 'py-3', content: `
+                    <div class="dropdown d-flex justify-content-center">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            ${data.hash ? `
+                                <li>
+                                    <a class="dropdown-item" href="/platform/dashboard/${this.scenarioName}/node/${data.hash}/metrics">
+                                        <i class="fa fa-chart-bar me-2"></i>Real-time metrics
+                                    </a>
+                                </li>
+                            ` : ''}
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/infolog">
+                                    <i class="fa fa-file-alt me-2"></i>Download INFO logs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/debuglog">
+                                    <i class="fa fa-bug me-2"></i>Download DEBUG logs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/errorlog">
+                                    <i class="fa fa-exclamation-triangle me-2"></i>Download ERROR logs
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                ` }  // Actions
+            ];
+
+            // Add cells to row with their initial values
+            cells.forEach(cell => {
+                const td = document.createElement('td');
+                td.className = cell.class;
+                td.innerHTML = cell.content;
+                nodeRow.appendChild(td);
+            });
+
+            // Add row to table
+            tableBody.appendChild(nodeRow);
+            console.log('New row created with initial values for node:', data.uid);
+            return; // Exit since we've already set all values
+        }
+
+        // Update existing row cells with latest data
+        try {
+            // Update IDX
+            const idxCell = nodeRow.querySelector('td:nth-child(1)');
+            if (idxCell) {
+                idxCell.textContent = data.idx || '0';
+            }
+
+            // Update IP
+            const ipCell = nodeRow.querySelector('td:nth-child(2)');
+            if (ipCell) {
+                ipCell.textContent = data.ip || '';
+            }
+
+            // Update Role
+            const roleCell = nodeRow.querySelector('td:nth-child(3)');
+            if (roleCell) {
+                roleCell.innerHTML = `
+                    <span class="badge bg-info-subtle text-black">
+                        <i class="fa fa-server me-1"></i>${data.role || 'Unknown'}
+                    </span>
+                `;
+            }
+
+            // Update Round
+            const roundCell = nodeRow.querySelector('td:nth-child(4)');
+            if (roundCell) {
+                roundCell.textContent = data.round || '0';
+            }
+
+            // Update Behaviour
+            const behaviorCell = nodeRow.querySelector('td:nth-child(5)');
+            if (behaviorCell) {
+                behaviorCell.innerHTML = data.malicious === "True" || data.malicious === "true"
+                    ? '<span class="badge bg-dark"><i class="fa fa-skull me-1"></i>Malicious</span>'
+                    : '<span class="badge bg-secondary"><i class="fa fa-shield-alt me-1"></i>Benign</span>';
+            }
+
+            // Update Status
+            const statusCell = nodeRow.querySelector('td:nth-child(6)');
+            if (statusCell) {
+                statusCell.innerHTML = data.status 
+                    ? '<span class="badge bg-success"><i class="fa fa-circle me-1"></i>Online</span>'
+                    : '<span class="badge bg-danger-subtle text-danger"><i class="fa fa-circle me-1"></i>Offline</span>';
+            }
+
+            // Update Actions
+            const actionsCell = nodeRow.querySelector('td:nth-child(7)');
+            if (actionsCell) {
+                const metricsLink = data.hash ? `
+                    <li>
+                        <a class="dropdown-item" href="/platform/dashboard/${this.scenarioName}/node/${data.hash}/metrics">
+                            <i class="fa fa-chart-bar me-2"></i>Real-time metrics
+                        </a>
+                    </li>
+                ` : '';
+                
+                actionsCell.innerHTML = `
+                    <div class="dropdown d-flex justify-content-center">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            ${metricsLink}
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/infolog">
+                                    <i class="fa fa-file-alt me-2"></i>Download INFO logs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/debuglog">
+                                    <i class="fa fa-bug me-2"></i>Download DEBUG logs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/errorlog">
+                                    <i class="fa fa-exclamation-triangle me-2"></i>Download ERROR logs
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error updating table cells:', error);
+        }
+    }
+
+    updateGraphDataFromStatus(nodesTable) {
+        // Clear existing data
+        this.gData.nodes = [];
+        this.gData.links = [];
+
+        // Create nodes
+        nodesTable.forEach(node => {
+            const nodeId = `${node.ip}:${node.port}`;
+            this.gData.nodes.push({
+                id: node.idx,
+                ip: node.ip,
+                port: node.port,
+                ipport: nodeId,
+                role: node.role,
+                malicious: node.malicious,
+                color: !node.status ? '#ff0000' : this.getNodeColor({ ipport: nodeId, role: node.role, malicious: node.malicious })
+            });
+        });
+
+        // Create links between online nodes
+        nodesTable.forEach(sourceNode => {
+            if (sourceNode.status && sourceNode.neighbors) {
+                const neighbors = sourceNode.neighbors.split(/[\s,]+/).filter(ip => ip.trim() !== '');
+                neighbors.forEach(neighbor => {
+                    const [neighborIP, neighborPort] = neighbor.split(':');
+                    const targetNode = nodesTable.find(n => n.ip === neighborIP && n.port === neighborPort);
+                    if (targetNode && targetNode.status) {
+                        this.gData.links.push({
+                            source: `${sourceNode.ip}:${sourceNode.port}`,
+                            target: `${neighborIP}:${neighborPort}`,
+                            value: this.randomFloatFromInterval(1.0, 1.3)
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    updateAllMarkers() {
+        Object.entries(this.droneMarkers).forEach(([uid, marker]) => {
+            const ip = marker.ip;
+            if (this.offlineNodes.has(ip)) {
+                marker.setIcon(this.droneIconOffline);
+                marker.getElement().classList.add('drone-offline');
+            } else {
+                marker.setIcon(this.droneIcon);
+                marker.getElement().classList.remove('drone-offline');
+            }
+        });
+    }
+
+    checkAllNodesOffline() {
+        // Get all unique node IPs from markers
+        const allNodeIPs = new Set(Object.values(this.droneMarkers).map(marker => marker.ip));
+        
+        // Check if all nodes are in the offlineNodes set
+        const allOffline = allNodeIPs.size > 0 && Array.from(allNodeIPs).every(ip => this.offlineNodes.has(ip));
+        
+        if (allOffline) {
+            // Update scenario status badge to "Finished"
+            const statusBadge = document.getElementById('scenario_status');
+            if (statusBadge) {
+                statusBadge.className = 'badge bg-danger-subtle text-danger px-3 py-2 ms-3';
+                statusBadge.innerHTML = '<i class="fa fa-times-circle me-2"></i>Finished';
+            }
+        }
     }
 }
 
