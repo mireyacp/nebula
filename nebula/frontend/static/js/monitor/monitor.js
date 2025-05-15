@@ -688,16 +688,15 @@ class Monitor {
             nodeRow = document.createElement('tr');
             nodeRow.id = `node-${data.uid}`;
             
-            // Create cells
+            // Create cells matching the HTML template structure
             const cells = [
-                { class: 'text-center', content: '' }, // IDX
-                { class: 'text-center', content: '' }, // IP
-                { class: 'text-center', content: '' }, // Role
-                { class: 'text-center', content: '' }, // Round
-                { class: 'text-center', content: '' }, // Behavior
-                { class: 'text-center', content: '' }, // Status
-                { class: 'text-center', content: '' }, // Federation
-                { class: 'text-center', content: '' }  // Timestamp
+                { class: 'py-3', content: '' }, // IDX
+                { class: 'py-3', content: '' }, // IP
+                { class: 'py-3', content: '' }, // Role
+                { class: 'py-3', content: '' }, // Round
+                { class: 'py-3', content: '' }, // Behaviour
+                { class: 'py-3', content: '' }, // Status
+                { class: 'py-3', content: '' }  // Actions
             ];
 
             // Add cells to row
@@ -750,7 +749,7 @@ class Monitor {
             // Update IDX
             const idxCell = nodeRow.querySelector('td:nth-child(1)');
             if (idxCell) {
-                idxCell.textContent = data.idx || '';
+                idxCell.textContent = data.idx || '0';
             }
 
             // Update IP
@@ -775,7 +774,7 @@ class Monitor {
                 roundCell.textContent = data.round || '0';
             }
 
-            // Update Behavior
+            // Update Behaviour
             const behaviorCell = nodeRow.querySelector('td:nth-child(5)');
             if (behaviorCell) {
                 behaviorCell.innerHTML = data.malicious === "True"
@@ -788,20 +787,46 @@ class Monitor {
             if (statusCell) {
                 statusCell.innerHTML = data.status 
                     ? '<span class="badge bg-success"><i class="fa fa-circle me-1"></i>Online</span>'
-                    : '<span class="badge bg-danger"><i class="fa fa-circle me-1"></i>Offline</span>';
+                    : '<span class="badge bg-danger-subtle text-danger"><i class="fa fa-circle me-1"></i>Offline</span>';
             }
 
-            // Update Federation if present
-            const federationCell = nodeRow.querySelector('td:nth-child(7)');
-            if (federationCell && data.federation) {
-                federationCell.textContent = data.federation;
-            }
-
-            // Update Timestamp if present
-            const timestampCell = nodeRow.querySelector('td:nth-child(8)');
-            if (timestampCell && data.timestamp) {
-                const date = new Date(data.timestamp);
-                timestampCell.textContent = date.toLocaleString();
+            // Update Actions
+            const actionsCell = nodeRow.querySelector('td:nth-child(7)');
+            if (actionsCell) {
+                const metricsLink = data.hash ? `
+                    <li>
+                        <a class="dropdown-item" href="/platform/dashboard/${this.scenarioName}/node/${data.hash}/metrics">
+                            <i class="fa fa-chart-bar me-2"></i>Real-time metrics
+                        </a>
+                    </li>
+                ` : '';
+                
+                actionsCell.innerHTML = `
+                    <div class="dropdown d-flex justify-content-center">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            ${metricsLink}
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/infolog">
+                                    <i class="fa fa-file-alt me-2"></i>Download INFO logs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/debuglog">
+                                    <i class="fa fa-bug me-2"></i>Download DEBUG logs
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item download" href="/platform/dashboard/${this.scenarioName}/node/${data.idx}/errorlog">
+                                    <i class="fa fa-exclamation-triangle me-2"></i>Download ERROR logs
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                `;
             }
 
             console.log('Table updated for node:', data.uid);
