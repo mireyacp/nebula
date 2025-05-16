@@ -206,15 +206,18 @@
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="deploymentRadioOptions" id="docker-radio"
                             value="docker" checked>
-                        <label class="form-check-label" for="docker-radio">Docker containers</label>
+                        <label class="form-check-label" for="docker-radio">Virtual devices</label>
                         <small id="dockerHelp" class="form-text text-muted"></small>
                             <i id="dockerHelpIcon" class="fa fa-info-circle" style="cursor: pointer;"></i>
                         </small>
                     </div>
                     <div class="form-check form-check-inline">
                         <input class="form-check-input" type="radio" name="deploymentRadioOptions" id="physical-devices-radio"
-                            value="physical" disabled>
+                            value="physical">
                         <label class="form-check-label" for="physical-devices-radio">Physical devices</label>
+                        <small id="physicalDevicesHelp" class="form-text text-muted">
+                            <i id="physicalDevicesHelpIcon" class="fa fa-info-circle" style="cursor: pointer;"></i>
+                        </small>
                     </div>
                 </div>
                 <div class="form-group row container-shadow tiny grey">
@@ -682,7 +685,7 @@
                         <div class="form-check form-check-inline">
                             <select class="form-control" id="schemeMobilitySelect" name="schemeMobility"
                                 style="display: inline" disabled>
-                                <option value="random" selected>Random</option>
+                                <option value="random" selected>Realistic mobility</option>
                             </select>
                         </div>
                         <h5 class="step-title">Each participant moves every (rounds)</h5>
@@ -695,6 +698,13 @@
                             <input type="number" class="form-control" id="mobileParticipantsPercent"
                                 placeholder="% of mobile participants" min="0" value="100"
                                 style="display: inline; width: 80%">
+                        </div>
+                        <h5 class="step-title">Mobility adaptation</h5>
+                        <div class="form-check form-check-inline">
+                            <select class="form-control" id="mobilityAdaptationSelect" name="mobilityAdaptation" style="display: inline">
+                                <option value="sa" selected>Situational Awareness</option>
+                                <option value="static">Static</option>
+                            </select>
                         </div>
                         <hr class="styled">
                         <h5 class="step-title">Number of additional participants (deployed during

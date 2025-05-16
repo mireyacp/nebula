@@ -36,6 +36,8 @@ const DeploymentManager = (function() {
         window.MobilityManager = MobilityManager;
         window.ReputationManager = ReputationManager;
         window.GraphSettings = GraphSettings;
+        window.DeploymentManager = DeploymentManager;
+        window.Utils = Utils;
     }
 
     function getGraphWidth() {
@@ -71,7 +73,8 @@ const DeploymentManager = (function() {
     function setupDeploymentButtons() {
         const runBtn = document.getElementById("run-btn");
         if (runBtn) {
-            runBtn.addEventListener("click", () => {
+            runBtn.addEventListener("click", (event) => {
+                event.stopPropagation();
                 if (!validateScenario()) {
                     return;
                 }
@@ -81,6 +84,15 @@ const DeploymentManager = (function() {
     }
 
     function validateScenario() {
+        const physicalDevicesRadio = document.getElementById('physical-devices-radio');
+        if (physicalDevicesRadio && physicalDevicesRadio.checked) {
+            if (!window.lastPhysicalDevicesAlert || Date.now() - window.lastPhysicalDevicesAlert > 1000) {
+                Utils.showAlert('danger', 'Physical devices deployment is not supported in this version');
+                window.lastPhysicalDevicesAlert = Date.now();
+            }
+            return false;
+        }
+
         // Validate topology
         if (!TopologyManager.getData().nodes.length) {
             Utils.showAlert('error', 'Please create a topology with at least one node');
@@ -250,7 +262,8 @@ const DeploymentManager = (function() {
     }
 
     return {
-        initialize
+        initialize,
+        validateScenario
     };
 })();
 

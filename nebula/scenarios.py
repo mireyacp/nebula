@@ -815,13 +815,17 @@ class ScenarioManagement:
         dataset.initialize_dataset()
         logging.info(f"Splitting {dataset_name} dataset... Done")
 
-        if self.scenario.deployment in ["docker", "process"]:
+        if self.scenario.deployment in ["docker", "process", "physical"]:
             if self.use_blockchain:
                 self.start_blockchain()
             if self.scenario.deployment == "docker":
                 self.start_nodes_docker()
-            else:
+            elif self.scenario.deployment == "physical":
+                self.start_nodes_physical()
+            elif self.scenario.deployment == "process":
                 self.start_nodes_process()
+            else:
+                raise ValueError(f"Unknown deployment type: {self.scenario.deployment}")
         else:
             logging.info(
                 f"Virtualization mode is disabled for scenario '{self.scenario_name}' with {self.n_nodes} nodes. Waiting for nodes to start manually..."
@@ -1097,6 +1101,15 @@ class ScenarioManagement:
 
         except Exception as e:
             raise Exception(f"Error starting nodes as processes: {e}")
+        
+    def start_nodes_physical(self):
+        logging.info("Starting nodes as physical devices...")
+        logging.info(f"env path: {self.env_path}")
+
+        for idx, node in enumerate(self.config.participants):
+            pass
+
+        logging.info("Physical devices deployment is not implemented publicly. Please use docker or process deployment.")
 
     @classmethod
     def remove_files_by_scenario(cls, scenario_name):

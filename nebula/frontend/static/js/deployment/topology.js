@@ -38,6 +38,15 @@ const TopologyManager = (function() {
             generatePredefinedTopology();
         });
 
+        document.querySelectorAll('input[name="deploymentRadioOptions"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (Graph) {
+                    Graph.nodeThreeObject(node => createNodeObject(node));
+                    Graph.graphData(gData);
+                }
+            });
+        });
+
         // Add federation architecture change listener
         document.getElementById('federationArchitecture').addEventListener('change', function() {
             const federationType = this.value;
@@ -398,6 +407,15 @@ const TopologyManager = (function() {
     function createNodeObject(node) {
         let geometry;
         let main_color;
+        const isPhysical = document.getElementById("physical-devices-radio").checked;
+
+        if (isPhysical) {
+            const texture = new THREE.TextureLoader().load('/platform/static/images/physical-device.png');
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(20, 15, 0);
+            return sprite;
+        }
 
         if (node.malicious) {
             geometry = new THREE.TorusGeometry(5, 2, 16, 100);

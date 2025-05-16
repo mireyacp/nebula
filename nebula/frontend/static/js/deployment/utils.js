@@ -1,10 +1,5 @@
 // Utility Functions Module
 const Utils = (function() {
-    function showAlert(type, message) {
-        // Implementation of alert display
-        console.log(`${type}: ${message}`);
-    }
-
     function greaterThan0(input) {
         const value = parseInt(input.value);
         if(value < 1 && !isNaN(value)) {

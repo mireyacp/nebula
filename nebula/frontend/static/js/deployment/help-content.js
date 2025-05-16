@@ -4,6 +4,7 @@ const HelpContent = (function() {
         const tooltipElements = {
             'processHelpIcon': 'Process deployment allows you to deploy participants in the same machine using different processes.',
             'dockerHelpIcon': 'Docker deployment allows you to deploy participants in different containers.',
+            'physicalDevicesHelpIcon': 'Physical devices deployment allows you to deploy participants in physical devices.',
             'architectureHelpIcon': architecture,
             'topologyCustomIcon': topology.custom,
             'topologyPredefinedIcon': topology.predefined,

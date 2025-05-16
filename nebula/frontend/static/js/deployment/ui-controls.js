@@ -276,6 +276,11 @@ const UIControls = (function() {
     }
 
     async function handleDeployment() {
+        // First check validation
+        if (!window.DeploymentManager.validateScenario()) {
+            return;
+        }
+
         const confirmModal = document.getElementById('confirm-modal');
         const confirmModalBody = document.getElementById('confirm-modal-body');
         const yesButton = document.getElementById("yes-button");
@@ -295,6 +300,11 @@ const UIControls = (function() {
         yesButton.disabled = false;
 
         const modal = new bootstrap.Modal(confirmModal);
+        
+        confirmModal.addEventListener('hidden.bs.modal', function () {
+            cleanupModal(confirmModal);
+        });
+        
         modal.show();
 
         yesButton.onclick = async () => {
@@ -371,19 +381,23 @@ const UIControls = (function() {
         
         // Add event listener for when modal is hidden
         infoModal.addEventListener('hidden.bs.modal', function () {
-            document.querySelector(".overlay").style.display = "none";
-            // Remove the modal backdrop
-            const backdrop = document.querySelector('.modal-backdrop');
-            if (backdrop) {
-                backdrop.remove();
-            }
-            // Remove the modal-open class from body
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.body.style.paddingRight = '';
+            cleanupModal(infoModal);
         });
         
         modal.show();
+    }
+
+    function cleanupModal(modal) {
+        document.querySelector(".overlay").style.display = "none";
+        // Remove the modal backdrop
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+        // Remove the modal-open class from body
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
     }
 
     function hideLoadingIndicators() {

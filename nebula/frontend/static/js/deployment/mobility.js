@@ -53,7 +53,7 @@ const MobilityManager = {
         document.getElementById("mobility-btn").addEventListener("click", () => {
             mobilityOptionsDiv.style.display = "block";
             if (this.map) {
-                this.addMapCircle();
+                this.updateMapCircle();
             }
         });
 
