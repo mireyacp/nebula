@@ -469,8 +469,11 @@ async def nebula_update_user(
 
 
 @app.get("/platform/api/dashboard/runningscenario", response_class=JSONResponse)
-async def nebula_dashboard_runningscenario():
-    scenario_running = get_running_scenario()
+async def nebula_dashboard_runningscenario(session: dict = Depends(get_session)):
+    if session.get("role") == "admin":
+        scenario_running = get_running_scenario()
+    elif "user" in session:
+        scenario_running = get_running_scenario(session["user"])
     if scenario_running:
         scenario_running_as_dict = dict(scenario_running)
         scenario_running_as_dict["scenario_status"] = "running"
@@ -586,7 +589,11 @@ async def nebula_dashboard(request: Request, session: dict = Depends(get_session
         scenarios = get_all_scenarios_and_check_completed(
             username=session["user"], role=session["role"]
         )  # Get all scenarios after checking if they are completed
-        scenario_running = get_running_scenario()
+        if session.get("role") == "admin":
+            scenario_running = get_running_scenario()
+        else:
+            scenario_running = get_running_scenario(username=session["user"])
+
         if session["user"] not in user_data_store:
             user_data_store[session["user"]] = UserData()
 
