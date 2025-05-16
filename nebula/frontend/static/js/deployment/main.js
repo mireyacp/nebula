@@ -204,7 +204,7 @@ const DeploymentManager = (function() {
         datasetSelect.innerHTML = "";
 
         // Add dataset options
-        const datasets = ['MNIST', 'FashionMNIST', 'CIFAR10'];
+        const datasets = ['MNIST', 'FashionMNIST', 'EMNIST', 'CIFAR10', 'CIFAR100'];
         datasets.forEach(dataset => {
             const option = document.createElement("option");
             option.value = dataset;
@@ -239,9 +239,12 @@ const DeploymentManager = (function() {
         switch(dataset.toLowerCase()) {
             case 'mnist':
             case 'fashionmnist':
+            case 'emnist':
                 return ['MLP', 'CNN'];
             case 'cifar10':
-                return ['CNN', 'ResNet18'];
+                return ['CNN', 'ResNet9', 'fastermobilenet', 'simplemobilenet', 'CNNv2', 'CNNv3'];
+            case 'cifar100':
+                return ['CNN'];
             default:
                 return ['MLP', 'CNN'];
         }
