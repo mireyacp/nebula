@@ -341,14 +341,13 @@ const UIControls = (function() {
                 if (response.redirected) {
                     window.location.href = response.url;
                 } else if (!response.ok) {
+                    hideLoadingIndicators();
                     handleDeploymentError(response.status);
                 }
             } catch (error) {
                 console.error('Error:', error);
                 hideLoadingIndicators();
                 handleDeploymentError(500, error);
-            } finally {
-                hideLoadingIndicators();
             }
         };
     }
@@ -388,7 +387,9 @@ const UIControls = (function() {
     }
 
     function cleanupModal(modal) {
-        document.querySelector(".overlay").style.display = "none";
+        if (!document.getElementById("spinner").style.display === "block") {
+            document.querySelector(".overlay").style.display = "none";
+        }
         // Remove the modal backdrop
         const backdrop = document.querySelector('.modal-backdrop');
         if (backdrop) {
