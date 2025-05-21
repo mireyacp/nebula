@@ -38,7 +38,7 @@ class DFLUpdateHandler(UpdateHandler):
         self._sources_received = set()
         self._round_updates_lock = Locker(
             name="round_updates_lock", async_lock=True
-        )  # It is taken when you start to check if all the updates are available.
+        )  # se coge cuando se empieza a comprobar si estan todas las updates
         self._update_federation_lock = Locker(name="update_federation_lock", async_lock=True)
         self._notification_sent_lock = Locker(name="notification_sent_lock", async_lock=True)
         self._notification = False
@@ -69,7 +69,7 @@ class DFLUpdateHandler(UpdateHandler):
                 self.us[fn] = (None, deque(maxlen=self._buffersize))
 
         # Clear removed nodes
-        removed_nodes = [node for node in self._updates_storage if node not in federation_nodes]
+        removed_nodes = [node for node in self._updates_storage.keys() if node not in federation_nodes]
         for rn in removed_nodes:
             del self._updates_storage[rn]
 
@@ -90,16 +90,21 @@ class DFLUpdateHandler(UpdateHandler):
             (last_updt, node_storage) = self._updates_storage[se]
             if len(node_storage):
                 try:
-                    if (last_updt and node_storage[-1] and last_updt != node_storage[-1]) or (node_storage[-1] and not last_updt):
+                    if (last_updt and node_storage[-1] and last_updt != node_storage[-1]) or (
+                        node_storage[-1] and not last_updt
+                    ):
                         self._sources_received.add(se)
-                        logging.info(f"Update already received from source: {se} | ({len(self._sources_received)}/{len(self._sources_expected)}) Updates received")
+                        logging.info(
+                            f"Update already received from source: {se} | ({len(self._sources_received)}/{len(self._sources_expected)}) Updates received"
+                        )
                 except:
-                    logging.error(f"ERROR: source expected: {se} | last_update None: {(True if not last_updt else False)}, last update storaged None: {(True if not node_storage[-1] else False)}")
+                    logging.exception(
+                        f"ERROR: source expected: {se} | last_update None: {(True if not last_updt else False)}, last update storaged None: {(True if not node_storage[-1] else False)}"
+                    )
 
     async def storage_update(self, updt_received_event: UpdateReceivedEvent):
         time_received = time.time()
         (model, weight, source, round, _) = await updt_received_event.get_event_data()
-
         if source in self._sources_expected:
             updt = Update(model, weight, source, round, time_received)
             await self._updates_storage_lock.acquire_async()
@@ -135,7 +140,7 @@ class DFLUpdateHandler(UpdateHandler):
             logging.info(f"Missing updates from sources: {updates_missing}")
         else:
             self._missing_ones.clear()
-            
+
         self._nodes_using_historic.clear()
         updates = {}
         for sr in self._sources_received:
@@ -212,6 +217,7 @@ class DFLUpdateHandler(UpdateHandler):
         all_received = False
         if len(updates_left) == 0:
             logging.info("All updates have been received this round")
-            await self._round_updates_lock.release_async()
+            if await self._round_updates_lock.locked_async():
+                await self._round_updates_lock.release_async()
             all_received = True
         return all_received

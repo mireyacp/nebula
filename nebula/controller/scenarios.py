@@ -15,7 +15,6 @@ import tensorboard_reducer as tbr
 
 from nebula.addons.blockchain.blockchain_deployer import BlockchainDeployer
 from nebula.addons.topologymanager import TopologyManager
-from nebula.config.config import Config
 from nebula.core.datasets.cifar10.cifar10 import CIFAR10Dataset
 from nebula.core.datasets.cifar100.cifar100 import CIFAR100Dataset
 from nebula.core.datasets.emnist.emnist import EMNISTDataset
@@ -23,6 +22,7 @@ from nebula.core.datasets.fashionmnist.fashionmnist import FashionMNISTDataset
 from nebula.core.datasets.mnist.mnist import MNISTDataset
 from nebula.core.utils.certificate import generate_ca_certificate, generate_certificate
 from nebula.utils import DockerUtils, FileUtils
+from nebula.config.config import Config
 
 
 # Definition of a scenario
@@ -70,13 +70,11 @@ class Scenario:
         weight_model_similarity,
         weight_num_messages,
         weight_fraction_params_changed,
-        # is_dynamic_topology,
-        # is_dynamic_aggregation,
-        # target_aggregation,
         random_geo,
         latitude,
         longitude,
         mobility,
+        network_simulation,
         mobility_type,
         radius_federation,
         scheme_mobility,
@@ -85,13 +83,19 @@ class Scenario:
         additional_participants,
         schema_additional_participants,
         random_topology_probability,
+        with_sa,
+        strict_topology,
+        sad_candidate_selector,
+        sad_model_handler,
+        sar_arbitration_policy,
+        sar_neighbor_policy,
     ):
         """
         Initialize the scenario.
 
         Args:
-            scenario_title (str): Title of the scenario.
-            scenario_description (str): Description of the scenario.
+            title (str): Title of the scenario.
+            description (str): Description of the scenario.
             deployment (str): Type of deployment (e.g., 'docker', 'process').
             federation (str): Type of federation.
             topology (str): Network topology.
@@ -129,9 +133,6 @@ class Scenario:
             weight_model_similarity (float): Weight of model similarity.
             weight_num_messages (float): Weight of number of messages.
             weight_fraction_params_changed (float): Weight of fraction of parameters changed.
-            # is_dynamic_topology (bool): Indicator if topology is dynamic.
-            # is_dynamic_aggregation (bool): Indicator if aggregation is dynamic.
-            # target_aggregation (str): Target aggregation method.
             random_geo (bool): Indicator if random geo is used.
             latitude (float): Latitude for mobility.
             longitude (float): Longitude for mobility.
@@ -144,6 +145,12 @@ class Scenario:
             additional_participants (list): List of additional participants.
             schema_additional_participants (str): Schema for additional participants.
             random_topology_probability (float): Probability for random topology.
+            with_sa (bool) : Indicator if Situational Awareness is used.
+            strict_topology (bool) :
+            sad_candidate_selector (str) :
+            sad_model_handler (str) :
+            sar_arbitration_policy (str) :
+            sar_neighbor_policy (str) :
         """
         self.scenario_title = scenario_title
         self.scenario_description = scenario_description
@@ -181,13 +188,11 @@ class Scenario:
         self.weight_model_similarity = weight_model_similarity
         self.weight_num_messages = weight_num_messages
         self.weight_fraction_params_changed = weight_fraction_params_changed
-        # self.is_dynamic_topology = is_dynamic_topology
-        # self.is_dynamic_aggregation = is_dynamic_aggregation
-        # self.target_aggregation = target_aggregation
         self.random_geo = random_geo
         self.latitude = latitude
         self.longitude = longitude
         self.mobility = mobility
+        self.network_simulation = network_simulation
         self.mobility_type = mobility_type
         self.radius_federation = radius_federation
         self.scheme_mobility = scheme_mobility
@@ -196,6 +201,12 @@ class Scenario:
         self.additional_participants = additional_participants
         self.schema_additional_participants = schema_additional_participants
         self.random_topology_probability = random_topology_probability
+        self.with_sa = with_sa
+        self.strict_topology = strict_topology
+        self.sad_candidate_selector = sad_candidate_selector
+        self.sad_model_handler = sad_model_handler
+        self.sar_arbitration_policy = sar_arbitration_policy
+        self.sar_neighbor_policy = sar_neighbor_policy
 
     def attack_node_assign(
         self,
@@ -438,9 +449,9 @@ class ScenarioManagement:
 
         # Assign the controller endpoint
         if self.scenario.deployment == "docker":
-            self.controller = f"{os.environ.get('NEBULA_CONTROLLER_NAME')}_nebula-frontend"
+            self.controller = f"{os.environ.get('NEBULA_CONTROLLER_HOST')}:{os.environ.get('NEBULA_CONTROLLER_PORT')}"
         else:
-            self.controller = f"127.0.0.1:{os.environ.get('NEBULA_FRONTEND_PORT')}"
+            self.controller = f"127.0.0.1:{os.environ.get('NEBULA_CONTROLLER_PORT')}"
 
         self.topologymanager = None
         self.env_path = None
@@ -504,7 +515,7 @@ class ScenarioManagement:
             shutil.copy(
                 os.path.join(
                     os.path.dirname(__file__),
-                    "./frontend/config/participant.json.example",
+                    "../frontend/config/participant.json.example",
                 ),
                 participant_file,
             )
@@ -514,6 +525,7 @@ class ScenarioManagement:
 
             participant_config["network_args"]["ip"] = node_config["ip"]
             participant_config["network_args"]["port"] = int(node_config["port"])
+            participant_config["network_args"]["simulation"] = self.scenario.network_simulation
             participant_config["device_args"]["idx"] = node_config["id"]
             participant_config["device_args"]["start"] = node_config["start"]
             participant_config["device_args"]["role"] = node_config["role"]
@@ -533,9 +545,6 @@ class ScenarioManagement:
             participant_config["adversarial_args"]["attacks"] = node_config["attacks"]
             participant_config["adversarial_args"]["attack_params"] = node_config["attack_params"]
             participant_config["defense_args"]["with_reputation"] = node_config["with_reputation"]
-            # participant_config["defense_args"]["is_dynamic_topology"] = self.scenario.is_dynamic_topology
-            # participant_config["defense_args"]["is_dynamic_aggregation"] = self.scenario.is_dynamic_aggregation
-            # participant_config["defense_args"]["target_aggregation"] = self.scenario.target_aggregation
             participant_config["defense_args"]["reputation_metrics"] = self.scenario.reputation_metrics
             participant_config["defense_args"]["initial_reputation"] = self.scenario.initial_reputation
             participant_config["defense_args"]["weighting_factor"] = self.scenario.weighting_factor
@@ -557,6 +566,21 @@ class ScenarioManagement:
             participant_config["mobility_args"]["round_frequency"] = self.scenario.round_frequency
             participant_config["reporter_args"]["report_status_data_queue"] = self.scenario.report_status_data_queue
             participant_config["mobility_args"]["topology_type"] = self.scenario.topology
+            if self.scenario.with_sa:
+                participant_config["situational_awareness"] = {
+                    "strict_topology": self.scenario.strict_topology,
+                    "sa_discovery": {
+                        "candidate_selector": self.scenario.sad_candidate_selector,
+                        "model_handler": self.scenario.sad_model_handler,
+                        "verbose": True,
+                    },
+                    "sa_reasoner": {
+                        "arbitration_policy": self.scenario.sar_arbitration_policy,
+                        "verbose": True,
+                        "sar_components": {"sa_network": True},
+                        "sa_network": {"neighbor_policy": self.scenario.sar_neighbor_policy, "verbose": True},
+                    },
+                }
 
             with open(participant_file, "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)
@@ -962,7 +986,7 @@ class ScenarioManagement:
             command = [
                 "/bin/bash",
                 "-c",
-                f"{start_command} && ifconfig && echo '{base}.1 host.docker.internal' >> /etc/hosts && python /nebula/nebula/node.py /nebula/app/config/{self.scenario_name}/participant_{node['device_args']['idx']}.json",
+                f"{start_command} && ifconfig && echo '{base}.1 host.docker.internal' >> /etc/hosts && python /nebula/nebula/core/node.py /nebula/app/config/{self.scenario_name}/participant_{node['device_args']['idx']}.json",
             ]
 
             if self.use_blockchain:
@@ -1016,28 +1040,29 @@ class ScenarioManagement:
             i += 1
 
     def start_nodes_process(self):
+        self.processes_root_path = os.path.join(os.path.dirname(__file__),"..", "..")
         logging.info("Starting nodes as processes...")
         logging.info(f"env path: {self.env_path}")
 
         # Include additional config to the participants
         for idx, node in enumerate(self.config.participants):
-            node["tracking_args"]["log_dir"] = os.path.join(self.root_path, "app", "logs")
-            node["tracking_args"]["config_dir"] = os.path.join(self.root_path, "app", "config", self.scenario_name)
+            node["tracking_args"]["log_dir"] = os.path.join(self.processes_root_path, "app", "logs")
+            node["tracking_args"]["config_dir"] = os.path.join(self.processes_root_path, "app", "config", self.scenario_name)
             node["scenario_args"]["controller"] = self.controller
             node["scenario_args"]["deployment"] = self.scenario.deployment
             node["security_args"]["certfile"] = os.path.join(
-                self.root_path,
+                self.processes_root_path,
                 "app",
                 "certs",
                 f"participant_{node['device_args']['idx']}_cert.pem",
             )
             node["security_args"]["keyfile"] = os.path.join(
-                self.root_path,
+                self.processes_root_path,
                 "app",
                 "certs",
                 f"participant_{node['device_args']['idx']}_key.pem",
             )
-            node["security_args"]["cafile"] = os.path.join(self.root_path, "app", "certs", "ca_cert.pem")
+            node["security_args"]["cafile"] = os.path.join(self.processes_root_path, "app", "certs", "ca_cert.pem")
 
             # Write the config file in config directory
             with open(f"{self.config_dir}/participant_{node['device_args']['idx']}.json", "w") as f:
@@ -1063,11 +1088,11 @@ class ScenarioManagement:
                         commands += "Start-Sleep -Seconds 2\n"
 
                     commands += f'Write-Host "Running node {node["device_args"]["idx"]}..."\n'
-                    commands += f'$OUT_FILE = "{self.root_path}\\app\\logs\\{self.scenario_name}\\participant_{node["device_args"]["idx"]}.out"\n'
-                    commands += f'$ERROR_FILE = "{self.root_path}\\app\\logs\\{self.scenario_name}\\participant_{node["device_args"]["idx"]}.err"\n'
+                    commands += f'$OUT_FILE = "{self.processes_root_path}\\app\\logs\\{self.scenario_name}\\participant_{node["device_args"]["idx"]}.out"\n'
+                    commands += f'$ERROR_FILE = "{self.processes_root_path}\\app\\logs\\{self.scenario_name}\\participant_{node["device_args"]["idx"]}.err"\n'
 
                     # Use Start-Process for executing Python in background and capture PID
-                    commands += f"""$process = Start-Process -FilePath "python" -ArgumentList "{self.root_path}\\nebula\\node.py {self.root_path}\\app\\config\\{self.scenario_name}\\participant_{node["device_args"]["idx"]}.json" -PassThru -NoNewWindow -RedirectStandardOutput $OUT_FILE -RedirectStandardError $ERROR_FILE
+                    commands += f"""$process = Start-Process -FilePath "python" -ArgumentList "{self.processes_root_path}\\nebula\\core\\node.py {self.processes_root_path}\\app\\config\\{self.scenario_name}\\participant_{node["device_args"]["idx"]}.json" -PassThru -NoNewWindow -RedirectStandardOutput $OUT_FILE -RedirectStandardError $ERROR_FILE
                 Add-Content -Path $PID_FILE -Value $process.Id
                 """
 
@@ -1089,15 +1114,15 @@ class ScenarioManagement:
                     else:
                         commands += "sleep 2\n"
                     commands += f'echo "Running node {node["device_args"]["idx"]}..."\n'
-                    commands += f"OUT_FILE={self.root_path}/app/logs/{self.scenario_name}/participant_{node['device_args']['idx']}.out\n"
-                    commands += f"python {self.root_path}/nebula/node.py {self.root_path}/app/config/{self.scenario_name}/participant_{node['device_args']['idx']}.json > $OUT_FILE 2>&1 &\n"
+                    commands += f"OUT_FILE={self.processes_root_path}/app/logs/{self.scenario_name}/participant_{node['device_args']['idx']}.out\n"
+                    commands += f"python {self.processes_root_path}/nebula/core/node.py {self.processes_root_path}/app/config/{self.scenario_name}/participant_{node['device_args']['idx']}.json > $OUT_FILE 2>&1 &\n"
                     commands += "echo $! >> $PID_FILE\n\n"
 
                 commands += 'echo "All nodes started. PIDs stored in $PID_FILE"\n'
 
-                with open(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.sh", "w") as f:
+                with open(f"{self.processes_root_path}/app/config/{self.scenario_name}/current_scenario_commands.sh", "w") as f:
                     f.write(commands)
-                os.chmod(f"/nebula/app/config/{self.scenario_name}/current_scenario_commands.sh", 0o755)
+                os.chmod(f"{self.processes_root_path}/app/config/{self.scenario_name}/current_scenario_commands.sh", 0o755)
 
         except Exception as e:
             raise Exception(f"Error starting nodes as processes: {e}")
