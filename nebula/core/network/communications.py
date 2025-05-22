@@ -736,7 +736,7 @@ class CommunicationsManager:
         is_neighbor = dest_addr in await self.get_addrs_current_connections(only_direct=True, myself=True)
 
         if forced:
-            self.add_to_blacklist(dest_addr)
+            await self.add_to_blacklist(dest_addr)
 
         logging.info(f"Trying to disconnect {dest_addr}")
         if dest_addr not in self.connections:
