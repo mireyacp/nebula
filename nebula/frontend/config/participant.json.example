@@ -98,7 +98,6 @@
     "weighting_factor": "dynamic"
   },
   "adversarial_args": {
-    "attacks": "No Attack",
     "attack_params" : {}
   },
   "tracking_args": {

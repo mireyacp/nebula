@@ -25,7 +25,6 @@ from nebula.addons.env import check_environment
 from nebula.config.config import Config
 from nebula.config.mender import Mender
 from nebula.controller.database import scenario_set_all_status_to_finished, scenario_set_status_to_finished
-from nebula.controller.scenarios import Scenario, ScenarioManagement
 from nebula.utils import DockerUtils, FileUtils, SocketUtils
 
 
@@ -313,6 +312,7 @@ async def remove_scenario(
         dict: A message indicating successful removal.
     """
     from nebula.controller.database import remove_scenario_by_name
+    from nebula.controller.scenarios import ScenarioManagement
 
     try:
         remove_scenario_by_name(scenario_name)
@@ -396,6 +396,7 @@ async def update_scenario(
         dict: A message confirming the update.
     """
     from nebula.controller.database import scenario_update_record
+    from nebula.controller.scenarios import Scenario
 
     try:
         scenario = Scenario.from_dict(scenario)
@@ -1631,6 +1632,8 @@ class Controller:
         - Handles any exceptions during PID reading or killing by logging them.
         - Exits the program with status code 0.
         """
+        from nebula.controller.scenarios import ScenarioManagement
+        
         logging.info("Closing NEBULA (exiting from components)... Please wait")
         DockerUtils.remove_containers_by_prefix(f"{os.environ['USER']}_")
         ScenarioManagement.stop_blockchain()

@@ -112,7 +112,7 @@ class Engine:
         self._aggregator = create_aggregator(config=self.config, engine=self)
 
         self._secure_neighbors = []
-        self._is_malicious = self.config.participant["adversarial_args"]["attacks"] != "No Attack"
+        self._is_malicious = self.config.participant["adversarial_args"]["attack_params"]["attacks"] != "No Attack"
 
         msg = f"Trainer: {self._trainer.__class__.__name__}"
         msg += f"\nDataset: {self.config.participant['data_args']['dataset']}"
@@ -647,7 +647,7 @@ class MaliciousNode(Engine):
         try:
             await self.attack.attack()
         except Exception:
-            attack_name = self.config.participant["adversarial_args"]["attacks"]
+            attack_name = self.config.participant["adversarial_args"]["attack_params"]["attacks"]
             logging.exception(f"Attack {attack_name} failed")
 
         if self.role == "aggregator":

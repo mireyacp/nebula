@@ -57,7 +57,6 @@ class Scenario:
         network_subnet,
         network_gateway,
         epochs,
-        attacks,
         attack_params,
         with_reputation,
         reputation_metrics,
@@ -114,7 +113,6 @@ class Scenario:
             network_subnet (str): Network subnet.
             network_gateway (str): Network gateway.
             epochs (int): Number of epochs.
-            attacks (list): List of attacks.
             attack_params (dict): Dictionary containing attack parameters.
             with_reputation (bool): Indicator if reputation is used.
             reputation_metrics (list): List of reputation metrics.
@@ -166,7 +164,6 @@ class Scenario:
         self.network_subnet = network_subnet
         self.network_gateway = network_gateway
         self.epochs = epochs
-        self.attacks = attacks
         self.attack_params = attack_params
         self.with_reputation = with_reputation
         self.reputation_metrics = reputation_metrics
@@ -200,7 +197,6 @@ class Scenario:
         self,
         nodes,
         federation,
-        attack,
         poisoned_node_percent,
         poisoned_sample_percent,
         poisoned_noise_percent,
@@ -238,26 +234,21 @@ class Scenario:
         
         # Get attack type from attack_params
         if attack_params and "attacks" in attack_params:
-            attack = attack_params["attacks"][0] if isinstance(attack_params["attacks"], list) else attack_params["attacks"]
+            attack = attack_params["attacks"]
         
-        # Handle attack parameter which can be either a string, a list, or None
+        # Handle attack parameter which can be either a string or None
         if attack is None:
             attack = "No Attack"
-        elif isinstance(attack, list):
-            if not attack:  # Empty list
-                attack = "No Attack"
-            else:
-                attack = attack[0]  # Take the first attack if it's a list
         elif not isinstance(attack, str):
-            raise ValueError(f"Invalid attack type: {attack}. Expected string, list, or None.")
+            raise ValueError(f"Invalid attack type: {attack}. Expected string or None.")
 
         if attack not in valid_attacks:
             raise ValueError(f"Invalid attack type: {attack}. Must be one of {valid_attacks}")
 
         # Get attack parameters from attack_params
-        poisoned_node_percent = attack_params.get("poisonedNodePercent", poisoned_node_percent)
-        poisoned_sample_percent = attack_params.get("poisonedSamplePercent", poisoned_sample_percent)
-        poisoned_noise_percent = attack_params.get("poisonedNoisePercent", poisoned_noise_percent)
+        poisoned_node_percent = attack_params.get("poisoned_node_percent", poisoned_node_percent)
+        poisoned_sample_percent = attack_params.get("poisoned_sample_percent", poisoned_sample_percent)
+        poisoned_noise_percent = attack_params.get("poisoned_noise_percent", poisoned_noise_percent)
 
         # Validate percentage parameters
         poisoned_node_percent = validate_percentage(poisoned_node_percent, "poisoned_node_percent")
@@ -307,103 +298,94 @@ class Scenario:
                 logging.info(f"Node {node} marked as malicious with attack {attack}")
                 
                 # Initialize attack parameters with defaults
-                attack_params = attack_params.copy() if attack_params else {}
+                node_attack_params = attack_params.copy() if attack_params else {}
                 
                 # Set attack-specific parameters
                 if attack == "Label Flipping":
-                    attack_params["poisoned_node_percent"] = poisoned_node_percent
-                    attack_params["poisoned_sample_percent"] = poisoned_sample_percent
-                    attack_params["targeted"] = attack_params.get("targeted", False)
-                    if attack_params["targeted"]:
-                        attack_params["target_label"] = validate_positive_int(
+                    node_attack_params["poisoned_node_percent"] = poisoned_node_percent
+                    node_attack_params["poisoned_sample_percent"] = poisoned_sample_percent
+                    node_attack_params["targeted"] = attack_params.get("targeted", False)
+                    if node_attack_params["targeted"]:
+                        node_attack_params["target_label"] = validate_positive_int(
                             attack_params.get("targetLabel", 4), "target_label"
                         )
-                        attack_params["target_changed_label"] = validate_positive_int(
+                        node_attack_params["target_changed_label"] = validate_positive_int(
                             attack_params.get("targetChangedLabel", 7), "target_changed_label"
                         )
                 
                 elif attack == "Sample Poisoning":
-                    attack_params["poisoned_node_percent"] = poisoned_node_percent
-                    attack_params["poisoned_sample_percent"] = poisoned_sample_percent
-                    attack_params["poisoned_noise_percent"] = poisoned_noise_percent
-                    attack_params["noise_type"] = attack_params.get("noiseType", "Gaussian")
-                    attack_params["targeted"] = attack_params.get("targeted", False)
-                    if attack_params["targeted"]:
-                        attack_params["target_label"] = validate_positive_int(
+                    node_attack_params["poisoned_node_percent"] = poisoned_node_percent
+                    node_attack_params["poisoned_sample_percent"] = poisoned_sample_percent
+                    node_attack_params["poisoned_noise_percent"] = poisoned_noise_percent
+                    node_attack_params["noise_type"] = attack_params.get("noiseType", "Gaussian")
+                    node_attack_params["targeted"] = attack_params.get("targeted", False)
+                    if node_attack_params["targeted"]:
+                        node_attack_params["target_label"] = validate_positive_int(
                             attack_params.get("targetLabel", 4), "target_label"
                         )
                 
                 elif attack == "Model Poisoning":
-                    attack_params["poisoned_node_percent"] = poisoned_node_percent
-                    attack_params["poisoned_noise_percent"] = poisoned_noise_percent
-                    attack_params["noise_type"] = attack_params.get("noiseType", "Gaussian")
+                    node_attack_params["poisoned_node_percent"] = poisoned_node_percent
+                    node_attack_params["poisoned_noise_percent"] = poisoned_noise_percent
+                    node_attack_params["noise_type"] = attack_params.get("noiseType", "Gaussian")
                 
                 elif attack == "GLL Neuron Inversion":
-                    attack_params["poisoned_node_percent"] = poisoned_node_percent
+                    node_attack_params["poisoned_node_percent"] = poisoned_node_percent
                 
                 elif attack == "Swapping Weights":
-                    attack_params["poisoned_node_percent"] = poisoned_node_percent
-                    attack_params["layer_idx"] = validate_positive_int(
+                    node_attack_params["poisoned_node_percent"] = poisoned_node_percent
+                    node_attack_params["layer_idx"] = validate_positive_int(
                         attack_params.get("layerIdx", 0), "layer_idx"
                     )
                 
                 elif attack == "Delayer":
-                    attack_params["poisoned_node_percent"] = poisoned_node_percent
-                    attack_params["delay"] = validate_positive_int(
+                    node_attack_params["poisoned_node_percent"] = poisoned_node_percent
+                    node_attack_params["delay"] = validate_positive_int(
                         attack_params.get("delay", 10), "delay"
                     )
-                    attack_params["target_percentage"] = validate_percentage(
+                    node_attack_params["target_percentage"] = validate_percentage(
                         attack_params.get("targetPercentage", 100), "target_percentage"
                     )
-                    attack_params["selection_interval"] = validate_positive_int(
+                    node_attack_params["selection_interval"] = validate_positive_int(
                         attack_params.get("selectionInterval", 1), "selection_interval"
                     )
                 
                 elif attack == "Flooding":
-                    attack_params["poisoned_node_percent"] = poisoned_node_percent
-                    attack_params["flooding_factor"] = validate_positive_int(
+                    node_attack_params["poisoned_node_percent"] = poisoned_node_percent
+                    node_attack_params["flooding_factor"] = validate_positive_int(
                         attack_params.get("floodingFactor", 100), "flooding_factor"
                     )
-                    attack_params["target_percentage"] = validate_percentage(
+                    node_attack_params["target_percentage"] = validate_percentage(
                         attack_params.get("targetPercentage", 100), "target_percentage"
                     )
-                    attack_params["selection_interval"] = validate_positive_int(
+                    node_attack_params["selection_interval"] = validate_positive_int(
                         attack_params.get("selectionInterval", 1), "selection_interval"
                     )
                 
                 # Add common attack parameters
-                attack_params["round_start_attack"] = validate_positive_int(
+                node_attack_params["round_start_attack"] = validate_positive_int(
                     attack_params.get("roundStartAttack", 1), "round_start_attack"
                 )
-                attack_params["round_stop_attack"] = validate_positive_int(
+                node_attack_params["round_stop_attack"] = validate_positive_int(
                     attack_params.get("roundStopAttack", 10), "round_stop_attack"
                 )
-                attack_params["attack_interval"] = validate_positive_int(
+                node_attack_params["attack_interval"] = validate_positive_int(
                     attack_params.get("attackInterval", 1), "attack_interval"
                 )
 
                 # Validate round parameters
-                if attack_params["round_start_attack"] >= attack_params["round_stop_attack"]:
+                if node_attack_params["round_start_attack"] >= node_attack_params["round_stop_attack"]:
                     raise ValueError("round_start_attack must be less than round_stop_attack")
-
+                
+                node_attack_params["attacks"] = node_att
+                nodes[node]["attack_params"] = node_attack_params
+            else:
+                nodes[node]["attack_params"] = {"attacks": "No Attack"}
+            
             nodes[node]["malicious"] = malicious
             nodes[node]["with_reputation"] = with_reputation
-            nodes[node]["attacks"] = node_att
-            nodes[node]["attack_params"] = attack_params
 
-            # Ensure the attack type is properly set in the node configuration
-            if malicious and attack != "No Attack":
-                nodes[node]["adversarial_args"] = {
-                    "attacks": attack,
-                    "attack_params": attack_params
-                }
-            else:
-                nodes[node]["adversarial_args"] = {
-                    "attacks": "No Attack",
-                    "attack_params": {}
-                }
-
-            logging.info(f"Node {node} final configuration - malicious: {nodes[node]['malicious']}, attack: {nodes[node]['attacks']}")
+            logging.info(f"Node {node} final configuration - malicious: {nodes[node]['malicious']}, attack: {nodes[node]['attack_params']['attacks']}")
 
         return nodes
 
@@ -431,38 +413,9 @@ class Scenario:
     def from_dict(cls, data):
         # Create a copy of the data to avoid modifying the original
         scenario_data = data.copy()
-        
-        # Extract attack parameters from attack_params if they exist
-        if "attack_params" in scenario_data:
-            attack_params = scenario_data["attack_params"]
-            # Extract attacks from attack_params if it exists
-            if "attacks" in attack_params:
-                scenario_data["attacks"] = attack_params["attacks"]
-                # Remove attacks from attack_params to avoid duplication
-                attack_params = attack_params.copy()
-                attack_params.pop("attacks", None)
-                scenario_data["attack_params"] = attack_params
-        else:
-            # Create attack_params with default values
-            attack_params = {
-                "poisonedNodePercent": scenario_data.pop("poisoned_node_percent", 0),
-                "poisonedSamplePercent": scenario_data.pop("poisoned_sample_percent", 0),
-                "poisonedNoisePercent": scenario_data.pop("poisoned_noise_percent", 0)
-            }
-            scenario_data["attack_params"] = attack_params
-
-        # Remove old parameters if they exist
-        scenario_data.pop("poisoned_node_percent", None)
-        scenario_data.pop("poisoned_sample_percent", None)
-        scenario_data.pop("poisoned_noise_percent", None)
 
         # Create the scenario object
         scenario = cls(**scenario_data)
-
-        # Add poisoned_node_percent as an attribute for backward compatibility
-        scenario.poisoned_node_percent = scenario_data["attack_params"].get("poisonedNodePercent", 0)
-        scenario.poisoned_sample_percent = scenario_data["attack_params"].get("poisonedSamplePercent", 0)
-        scenario.poisoned_noise_percent = scenario_data["attack_params"].get("poisonedNoisePercent", 0)
 
         return scenario
 
@@ -530,14 +483,13 @@ class ScenarioManagement:
         os.chmod(settings_file, 0o777)
 
         # Get attack parameters from attack_params
-        poisoned_node_percent = self.scenario.attack_params.get("poisonedNodePercent", 0)
-        poisoned_sample_percent = self.scenario.attack_params.get("poisonedSamplePercent", 0)
-        poisoned_noise_percent = self.scenario.attack_params.get("poisonedNoisePercent", 0)
+        poisoned_node_percent = self.scenario.attack_params.get("poisoned_node_percent", 0)
+        poisoned_sample_percent = self.scenario.attack_params.get("poisoned_sample_percent", 0)
+        poisoned_noise_percent = self.scenario.attack_params.get("poisoned_noise_percent", 0)
 
         self.scenario.nodes = self.scenario.attack_node_assign(
             self.scenario.nodes,
             self.scenario.federation,
-            self.scenario.attacks,
             int(poisoned_node_percent),
             int(poisoned_sample_percent),
             int(poisoned_noise_percent),
@@ -585,8 +537,11 @@ class ScenarioManagement:
             participant_config["device_args"]["gpu_id"] = self.scenario.gpu_id
             participant_config["device_args"]["logging"] = self.scenario.logginglevel
             participant_config["aggregator_args"]["algorithm"] = self.scenario.agg_algorithm
-            participant_config["adversarial_args"]["attacks"] = node_config["attacks"]
-            participant_config["adversarial_args"]["attack_params"] = node_config["attack_params"]
+            # To be sure that benign nodes have no attack parameters
+            if node_config["malicious"]:
+                participant_config["adversarial_args"]["attack_params"] = node_config["attack_params"]
+            else:
+                participant_config["adversarial_args"]["attack_params"] = {"attacks": "No Attack"}
             participant_config["defense_args"]["with_reputation"] = node_config["with_reputation"]
             participant_config["defense_args"]["reputation_metrics"] = self.scenario.reputation_metrics
             participant_config["defense_args"]["initial_reputation"] = self.scenario.initial_reputation
@@ -760,16 +715,6 @@ class ScenarioManagement:
                 else:
                     raise ValueError("Only one node can be start node")
 
-            # Convert attack parameters to snake_case
-            if "adversarial_args" in participant_config and "attack_params" in participant_config["adversarial_args"]:
-                attack_params = participant_config["adversarial_args"]["attack_params"]
-                converted_params = {}
-                for key, value in attack_params.items():
-                    # Convert camelCase to snake_case
-                    snake_key = ''.join(['_' + c.lower() if c.isupper() else c for c in key]).lstrip('_')
-                    converted_params[snake_key] = value
-                participant_config["adversarial_args"]["attack_params"] = converted_params
-
             with open(f"{self.config_dir}/participant_" + str(i) + ".json", "w") as f:
                 json.dump(participant_config, f, sort_keys=False, indent=2)
 
@@ -824,16 +769,6 @@ class ScenarioManagement:
 
                 # used for late creation nodes
                 participant_config["mobility_args"]["late_creation"] = True
-
-                # Convert attack parameters to snake_case for additional participants
-                if "adversarial_args" in participant_config and "attack_params" in participant_config["adversarial_args"]:
-                    attack_params = participant_config["adversarial_args"]["attack_params"]
-                    converted_params = {}
-                    for key, value in attack_params.items():
-                        # Convert camelCase to snake_case
-                        snake_key = ''.join(['_' + c.lower() if c.isupper() else c for c in key]).lstrip('_')
-                        converted_params[snake_key] = value
-                    participant_config["adversarial_args"]["attack_params"] = converted_params
 
                 with open(additional_participant_file, "w") as f:
                     json.dump(participant_config, f, sort_keys=False, indent=2)

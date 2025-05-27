@@ -141,10 +141,6 @@ async def initialize_databases(databases_dir):
                 network_subnet TEXT,
                 network_gateway TEXT,
                 epochs TEXT,
-                attacks TEXT,
-                poisoned_node_percent TEXT,
-                poisoned_sample_percent TEXT,
-                poisoned_noise_percent TEXT,
                 attack_params TEXT,
                 with_reputation TEXT,
                 random_geo TEXT,
@@ -193,10 +189,6 @@ async def initialize_databases(databases_dir):
             "network_subnet": "TEXT",
             "network_gateway": "TEXT",
             "epochs": "TEXT",
-            "attacks": "TEXT",
-            "poisoned_node_percent": "TEXT",
-            "poisoned_sample_percent": "TEXT",
-            "poisoned_noise_percent": "TEXT",
             "attack_params": "TEXT",
             "with_reputation": "TEXT",
             "random_geo": "TEXT",
@@ -592,10 +584,6 @@ def scenario_update_record(
                     network_subnet,
                     network_gateway,
                     epochs,
-                    attacks,
-                    poisoned_node_percent,
-                    poisoned_sample_percent,
-                    poisoned_noise_percent,
                     attack_params,
                     with_reputation,
                     random_geo,
@@ -613,7 +601,7 @@ def scenario_update_record(
                     role,
                     username
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 );
             """
             c.execute(insert_command, (
@@ -644,10 +632,6 @@ def scenario_update_record(
                 scenario.network_subnet,
                 scenario.network_gateway,
                 scenario.epochs,
-                json.dumps(scenario.attacks),
-                scenario.poisoned_node_percent,
-                scenario.poisoned_sample_percent,
-                scenario.poisoned_noise_percent,
                 json.dumps(scenario.attack_params),
                 scenario.with_reputation,
                 scenario.random_geo,
@@ -694,10 +678,6 @@ def scenario_update_record(
                     network_subnet = ?,
                     network_gateway = ?,
                     epochs = ?,
-                    attacks = ?,
-                    poisoned_node_percent = ?,
-                    poisoned_sample_percent = ?,
-                    poisoned_noise_percent = ?,
                     attack_params = ?,
                     with_reputation = ?,
                     random_geo = ?,
@@ -743,7 +723,6 @@ def scenario_update_record(
                 scenario.network_subnet,
                 scenario.network_gateway,
                 scenario.epochs,
-                json.dumps(scenario.attacks),
                 scenario.poisoned_node_percent,
                 scenario.poisoned_sample_percent,
                 scenario.poisoned_noise_percent,
