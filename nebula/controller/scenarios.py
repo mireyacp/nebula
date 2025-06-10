@@ -961,7 +961,7 @@ class ScenarioManagement:
                     ).encode()
                 ).hexdigest()
                 participant_config["mobility_args"]["additional_node"]["status"] = True
-                participant_config["mobility_args"]["additional_node"]["round_start"] = additional_participant["round"]
+                participant_config["mobility_args"]["additional_node"]["time_start"] = additional_participant["time_start"]
 
                 # used for late creation nodes
                 participant_config["mobility_args"]["late_creation"] = True

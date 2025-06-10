@@ -199,7 +199,6 @@ class NebulaEventHandler(PatternMatchingEventHandler):
         Typical use cases:
             - Reacting to new script files by updating network configurations and executing them automatically.
         """
-        print(f"[FER] File created: {event.src_path}")
         if event.is_directory:
             return
         src_path = event.src_path
@@ -234,7 +233,6 @@ class NebulaEventHandler(PatternMatchingEventHandler):
         Typical use cases:
             - Cleaning up running processes when associated script files are removed.
         """
-        print("[FER] File deleted: %s" % event.src_path)
         if event.is_directory:
             return
         src_path = event.src_path
@@ -275,9 +273,6 @@ class NebulaEventHandler(PatternMatchingEventHandler):
             print(f"Running script: {script}")
             if script.endswith(".sh"):
                 result = subprocess.Popen(["bash", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                print(f"Script output:\n{result.stdout}")
-                if result.stderr:
-                    logging.error(f"Script error:\n{result.stderr}")
             elif script.endswith(".ps1"):
                 subprocess.Popen(
                     ["powershell", "-ExecutionPolicy", "Bypass", "-File", script],

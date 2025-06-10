@@ -209,11 +209,11 @@ const MobilityManager = {
         for (let i = 0; i < additionalParticipantsCount; i++) {
             if(document.getElementById("connectionDelaySwitch").checked) {
                 config.additionalParticipants.push({
-                    round: parseInt(document.getElementById("connectionDelay").value)
+                    time_start: parseInt(document.getElementById("connectionDelay").value)
                 });
             } else {
                 config.additionalParticipants.push({
-                    round: parseInt(document.getElementById(`roundsAdditionalParticipant${i}`).value)
+                    time_start: parseInt(document.getElementById(`roundsAdditionalParticipant${i}`).value)
                 });
             }
         }
