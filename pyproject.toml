@@ -82,7 +82,6 @@ controller = [
 ]
 core = [
     "aiohttp==3.10.5",
-    "ansi2html==1.9.2",
     "async-timeout==4.0.3",
     "cryptography==43.0.1",
     "datasets==2.21.0",
@@ -126,7 +125,6 @@ core = [
 ]
 frontend = [
     "aiohttp==3.10.5",
-    "ansi2html==1.9.2",
     "cffi==1.17.1",
     "cryptography==43.0.1",
     "docker==7.1.0",
