@@ -1,3 +1,4 @@
+import asyncio
 import glob
 import hashlib
 import json
@@ -9,12 +10,15 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+from urllib.parse import quote
 
+from aiohttp import FormData
 import docker
 import tensorboard_reducer as tbr
 
 from nebula.addons.topologymanager import TopologyManager
 from nebula.config.config import Config
+from nebula.controller.http_helpers import remote_get, remote_post_form
 from nebula.core.datasets.cifar10.cifar10 import CIFAR10Dataset
 from nebula.core.datasets.cifar100.cifar100 import CIFAR100Dataset
 from nebula.core.datasets.emnist.emnist import EMNISTDataset
@@ -103,6 +107,7 @@ class Scenario:
         sar_neighbor_policy,
         sar_training,
         sar_training_policy,
+        physical_ips=None,
     ):
         """
         Initialize a Scenario instance.
@@ -154,6 +159,7 @@ class Scenario:
             sar_neighbor_policy (str): Neighbor policy for SAR.
             sar_training (bool): Wheter SAR training is enabled.
             sar_training_policy (str): Training policy for SAR.
+            physical_ips (list, optional): List of physical IPs for nodes. Defaults to None.
         """
         self.scenario_title = scenario_title
         self.scenario_description = scenario_description
@@ -226,6 +232,7 @@ class Scenario:
         self.sar_neighbor_policy = sar_neighbor_policy
         self.sar_training = sar_training
         self.sar_training_policy = sar_training_policy
+        self.physical_ips = physical_ips
 
     def attack_node_assign(
         self,
@@ -574,9 +581,18 @@ class ScenarioManagement:
         self.advanced_analytics = os.environ.get("NEBULA_ADVANCED_ANALYTICS", "False") == "True"
         self.config = Config(entity="scenarioManagement")
 
+        # If physical set the neighbours correctly
+        if self.scenario.deployment == "physical" and self.scenario.physical_ips:
+            for idx, ip in enumerate(self.scenario.physical_ips):
+                node_key = str(idx)
+                if node_key in self.scenario.nodes:
+                    self.scenario.nodes[node_key]["ip"] = ip
+ 
         # Assign the controller endpoint
         if self.scenario.deployment == "docker":
             self.controller = f"{os.environ.get('NEBULA_CONTROLLER_HOST')}:{os.environ.get('NEBULA_CONTROLLER_PORT')}"
+        elif self.scenario.deployment == "physical":
+            self.controller = "100.120.46.10:49152"
         else:
             self.controller = f"127.0.0.1:{os.environ.get('NEBULA_CONTROLLER_PORT')}"
 
@@ -653,7 +669,10 @@ class ScenarioManagement:
                 participant_config = json.load(f)
 
             participant_config["network_args"]["ip"] = node_config["ip"]
-            participant_config["network_args"]["port"] = int(node_config["port"])
+            if self.scenario.deployment == "physical":
+                participant_config["network_args"]["port"] = 8000
+            else:
+                participant_config["network_args"]["port"] = int(node_config["port"])
             participant_config["network_args"]["simulation"] = self.scenario.network_simulation
             participant_config["device_args"]["idx"] = node_config["id"]
             participant_config["device_args"]["start"] = node_config["start"]
@@ -801,7 +820,7 @@ class ScenarioManagement:
         logging.info("Closing NEBULA nodes... Please wait")
         ScenarioManagement.stop_participants()
 
-    def load_configurations_and_start_nodes(self, additional_participants=None, schema_additional_participants=None):
+    async def load_configurations_and_start_nodes(self, additional_participants=None, schema_additional_participants=None):
         """
         Load participant configurations, generate certificates, setup topology, split datasets, 
         and start nodes according to the scenario deployment type.
@@ -1326,7 +1345,46 @@ class ScenarioManagement:
         except Exception as e:
             raise Exception(f"Error starting nodes as processes: {e}")
 
-    def start_nodes_physical(self):
+    async def _upload_and_start(self, node_cfg: dict) -> None:
+        ip   = node_cfg["network_args"]["ip"]
+        port = node_cfg["network_args"]["port"]
+        host = f"{ip}:{port}"
+        idx  = node_cfg["device_args"]["idx"]
+ 
+        cfg_dir          = self.config_dir
+        config_path      = f"{cfg_dir}/participant_{idx}.json"
+        global_test_path = f"{cfg_dir}/global_test.h5"
+        train_set_path   = f"{cfg_dir}/participant_{idx}_train.h5"
+ 
+        # ---------- multipart/form-data ------------------------
+        form = FormData()
+        form.add_field("config",      open(config_path, "rb"),
+                       filename=os.path.basename(config_path),
+                       content_type="application/json")
+        form.add_field("global_test", open(global_test_path, "rb"),
+                       filename=os.path.basename(global_test_path),
+                       content_type="application/octet-stream")
+        form.add_field("train_set",   open(train_set_path, "rb"),
+                       filename=os.path.basename(train_set_path),
+                       content_type="application/octet-stream")
+ 
+        # ---------- /physical/setup/ (PUT) ---------------------
+        setup_ep = f"/physical/setup/{quote(host, safe='')}"
+        st, data = await remote_post_form(
+            self.controller, setup_ep, form, method="PUT"
+        )
+        if st != 201:
+            raise RuntimeError(f"[{host}] setup failed {st}: {data}")
+ 
+        # ---------- /physical/run/ (GET) ------------------------
+        run_ep = f"/physical/run/{quote(host, safe='')}"
+        st, data = await remote_get(self.controller, run_ep)
+        if st != 200:
+            raise RuntimeError(f"[{host}] run failed {st}: {data}")
+ 
+        logging.info("Node %s running: %s", host, data)
+
+    async def start_nodes_physical(self):
         """
         Placeholder method for starting nodes on physical devices.
 
@@ -1341,6 +1399,8 @@ class ScenarioManagement:
 
         for idx, node in enumerate(self.config.participants):
             pass
+
+        asyncio.create_task(self._upload_and_start(node))
 
         logging.info(
             "Physical devices deployment is not implemented publicly. Please use docker or process deployment."
