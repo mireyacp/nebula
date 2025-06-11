@@ -144,8 +144,9 @@ If you use NEBULA (or Fedstellar) in a scientific publication, we would apprecia
 
 Distributed under the GNU AGPLv3 License. See `LICENSE` for more information.
 
-**Community Edition** — released under the **GNU Affero GPL v3.0**.
-**Enterprise Edition** — proprietary license & premium support available.
+* **Community Edition** — released under the **GNU Affero GPL v3.0**.
+* **Enterprise Edition** — proprietary license & premium support available.
+
 Contact **enriquetomas@um.es** and **alberto.huertas@um.es** for commercial terms.
 
 ## 🙏 Acknowledgements
