@@ -407,27 +407,27 @@ class Scenario:
                     node_attack_params["targeted"] = attack_params.get("targeted", False)
                     if node_attack_params["targeted"]:
                         node_attack_params["target_label"] = validate_positive_int(
-                            attack_params.get("targetLabel", 4), "target_label"
+                            attack_params.get("target_label", 4), "target_label"
                         )
                         node_attack_params["target_changed_label"] = validate_positive_int(
-                            attack_params.get("targetChangedLabel", 7), "target_changed_label"
+                            attack_params.get("target_changed_label", 7), "target_changed_label"
                         )
 
                 elif attack == "Sample Poisoning":
                     node_attack_params["poisoned_node_percent"] = poisoned_node_percent
                     node_attack_params["poisoned_sample_percent"] = poisoned_sample_percent
                     node_attack_params["poisoned_noise_percent"] = poisoned_noise_percent
-                    node_attack_params["noise_type"] = attack_params.get("noiseType", "Gaussian")
+                    node_attack_params["noise_type"] = attack_params.get("noise_type", "Gaussian")
                     node_attack_params["targeted"] = attack_params.get("targeted", False)
                     if node_attack_params["targeted"]:
                         node_attack_params["target_label"] = validate_positive_int(
-                            attack_params.get("targetLabel", 4), "target_label"
+                            attack_params.get("target_label", 4), "target_label"
                         )
 
                 elif attack == "Model Poisoning":
                     node_attack_params["poisoned_node_percent"] = poisoned_node_percent
                     node_attack_params["poisoned_noise_percent"] = poisoned_noise_percent
-                    node_attack_params["noise_type"] = attack_params.get("noiseType", "Gaussian")
+                    node_attack_params["noise_type"] = attack_params.get("noise_type", "Gaussian")
 
                 elif attack == "GLL Neuron Inversion":
                     node_attack_params["poisoned_node_percent"] = poisoned_node_percent
@@ -435,40 +435,40 @@ class Scenario:
                 elif attack == "Swapping Weights":
                     node_attack_params["poisoned_node_percent"] = poisoned_node_percent
                     node_attack_params["layer_idx"] = validate_positive_int(
-                        attack_params.get("layerIdx", 0), "layer_idx"
+                        attack_params.get("layer_idx", 0), "layer_idx"
                     )
 
                 elif attack == "Delayer":
                     node_attack_params["poisoned_node_percent"] = poisoned_node_percent
                     node_attack_params["delay"] = validate_positive_int(attack_params.get("delay", 10), "delay")
                     node_attack_params["target_percentage"] = validate_percentage(
-                        attack_params.get("targetPercentage", 100), "target_percentage"
+                        attack_params.get("target_percentage", 100), "target_percentage"
                     )
                     node_attack_params["selection_interval"] = validate_positive_int(
-                        attack_params.get("selectionInterval", 1), "selection_interval"
+                        attack_params.get("selection_interval", 1), "selection_interval"
                     )
 
                 elif attack == "Flooding":
                     node_attack_params["poisoned_node_percent"] = poisoned_node_percent
                     node_attack_params["flooding_factor"] = validate_positive_int(
-                        attack_params.get("floodingFactor", 100), "flooding_factor"
+                        attack_params.get("flooding_factor", 100), "flooding_factor"
                     )
                     node_attack_params["target_percentage"] = validate_percentage(
-                        attack_params.get("targetPercentage", 100), "target_percentage"
+                        attack_params.get("target_percentage", 100), "target_percentage"
                     )
                     node_attack_params["selection_interval"] = validate_positive_int(
-                        attack_params.get("selectionInterval", 1), "selection_interval"
+                        attack_params.get("selection_interval", 1), "selection_interval"
                     )
 
                 # Add common attack parameters
                 node_attack_params["round_start_attack"] = validate_positive_int(
-                    attack_params.get("roundStartAttack", 1), "round_start_attack"
+                    attack_params.get("round_start_attack", 1), "round_start_attack"
                 )
                 node_attack_params["round_stop_attack"] = validate_positive_int(
-                    attack_params.get("roundStopAttack", 10), "round_stop_attack"
+                    attack_params.get("round_stop_attack", 10), "round_stop_attack"
                 )
                 node_attack_params["attack_interval"] = validate_positive_int(
-                    attack_params.get("attackInterval", 1), "attack_interval"
+                    attack_params.get("attack_interval", 1), "attack_interval"
                 )
 
                 # Validate round parameters
