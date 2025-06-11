@@ -980,7 +980,7 @@ class ScenarioManagement:
         if dataset_name == "MNIST":
             dataset = MNISTDataset(
                 num_classes=10,
-                partitions_number=self.n_nodes,
+                partitions_number=self.n_nodes+len(additional_participants),
                 iid=self.scenario.iid,
                 partition=self.scenario.partition_selection,
                 partition_parameter=self.scenario.partition_parameter,
@@ -990,7 +990,7 @@ class ScenarioManagement:
         elif dataset_name == "FashionMNIST":
             dataset = FashionMNISTDataset(
                 num_classes=10,
-                partitions_number=self.n_nodes,
+                partitions_number=self.n_nodes+len(additional_participants),
                 iid=self.scenario.iid,
                 partition=self.scenario.partition_selection,
                 partition_parameter=self.scenario.partition_parameter,
@@ -1000,7 +1000,7 @@ class ScenarioManagement:
         elif dataset_name == "EMNIST":
             dataset = EMNISTDataset(
                 num_classes=47,
-                partitions_number=self.n_nodes,
+                partitions_number=self.n_nodes+len(additional_participants),
                 iid=self.scenario.iid,
                 partition=self.scenario.partition_selection,
                 partition_parameter=self.scenario.partition_parameter,
@@ -1010,7 +1010,7 @@ class ScenarioManagement:
         elif dataset_name == "CIFAR10":
             dataset = CIFAR10Dataset(
                 num_classes=10,
-                partitions_number=self.n_nodes,
+                partitions_number=self.n_nodes+len(additional_participants),
                 iid=self.scenario.iid,
                 partition=self.scenario.partition_selection,
                 partition_parameter=self.scenario.partition_parameter,
@@ -1020,7 +1020,7 @@ class ScenarioManagement:
         elif dataset_name == "CIFAR100":
             dataset = CIFAR100Dataset(
                 num_classes=100,
-                partitions_number=self.n_nodes,
+                partitions_number=self.n_nodes+len(additional_participants),
                 iid=self.scenario.iid,
                 partition=self.scenario.partition_selection,
                 partition_parameter=self.scenario.partition_parameter,
