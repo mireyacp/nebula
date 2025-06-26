@@ -495,14 +495,14 @@ class CommunicationsManager:
         """
         return self.addr
 
-    def get_round(self):
+    async def get_round(self):
         """
         Retrieves the current training round number from the engine.
 
         Returns:
             int: The current round number in the federated learning process.
         """
-        return self.engine.get_round()
+        return await self.engine.get_round()
 
     async def start(self):
         """
@@ -555,7 +555,7 @@ class CommunicationsManager:
                 addr = writer.get_extra_info("peername")
 
                 # Check if learning cycle has finished - reject new connections
-                if self.engine.learning_cycle_finished():
+                if await self.engine.learning_cycle_finished():
                     logging.info(f"🔗  [incoming] Rejecting connection from {addr} because learning cycle has finished")
                     writer.write(b"CONNECTION//CLOSE\n")
                     await writer.drain()
@@ -801,7 +801,7 @@ class CommunicationsManager:
         """
         logging.info("🌐  Deploying additional services...")
         await self._forwarder.start()
-        self._propagator.start()
+        await self._propagator.start()
 
     async def include_received_message_hash(self, hash_message, source):
         """
@@ -900,7 +900,7 @@ class CommunicationsManager:
             bool: True if the connection action (new or upgrade) succeeded, False otherwise.
         """
         # Check if learning cycle has finished - don't establish new connections
-        if self.engine.learning_cycle_finished():
+        if await self.engine.learning_cycle_finished():
             logging.info(f"🔗  [outgoing] Not establishing connection to {addr} because learning cycle has finished")
             return False
 
@@ -1129,7 +1129,8 @@ class CommunicationsManager:
 
         # Get the connection under lock to prevent race conditions
         async with self.connections_lock:
-            if dest_addr not in self.connections:
+            connection_to_remove = self.connections.get(dest_addr)
+            if not connection_to_remove:
                 logging.info(f"Connection {dest_addr} not found")
                 return
             conn = self.connections[dest_addr]
@@ -1227,8 +1228,8 @@ class CommunicationsManager:
     def get_ready_connections(self):
         return {addr for addr, conn in self.connections.items() if conn.get_ready()}
 
-    def learning_finished(self):
-        return self.engine.learning_cycle_finished()
+    async def learning_finished(self):
+        return await self.engine.learning_cycle_finished()
 
     def __str__(self):
         return f"Connections: {[str(conn) for conn in self.connections.values()]}"

@@ -216,8 +216,8 @@ class FederationConnector(ISADiscovery):
         """
         async with self.pending_confirmation_from_nodes_lock:
             found = addr in self.pending_confirmation_from_nodes
-            logging.info(f"pending confirmations:{self.pending_confirmation_from_nodes}")
-        logging.info(f"Waiting confirmation from source: {addr}, status: {found}")
+        #     logging.info(f"pending confirmations:{self.pending_confirmation_from_nodes}")
+        # logging.info(f"Waiting confirmation from source: {addr}, status: {found}")
         return found
 
     async def _confirmation_received(self, addr, confirmation=True, joining=False):
@@ -500,14 +500,14 @@ class FederationConnector(ISADiscovery):
 
             ct_actions, df_actions = await self._get_actions()
             if len(ct_actions):
-                logging.info(f"{ct_actions}")
+                # logging.info(f"{ct_actions}")
                 cnt_msg = self.cm.create_message("link", "connect_to", addrs=ct_actions)
                 await self.cm.send_message(source, cnt_msg)
 
             if len(df_actions):
-                logging.info(f"{df_actions}")
+                # logging.info(f"{df_actions}")
                 for addr in df_actions.split():
-                    await self.cm.disconnect(addr, mutual_disconnection=True)
+                    await self.cm.disconnect(addr, mutual_disconnection=False)
 
             await self._register_late_neighbor(source, joinning_federation=True)
 
@@ -539,7 +539,7 @@ class FederationConnector(ISADiscovery):
 
             if len(df_actions):
                 for addr in df_actions.split():
-                    await self.cm.disconnect(addr, mutual_disconnection=True)
+                    await self.cm.disconnect(addr, mutual_disconnection=False)
                 # df_msg = self.cm.create_message("link", "disconnect_from", addrs=df_actions)
                 # await self.cm.send_message(source, df_msg)
 
@@ -553,7 +553,7 @@ class FederationConnector(ISADiscovery):
             await self.engine.trainning_in_progress_lock.acquire_async()
             model, rounds, round = (
                 await self.cm.propagator.get_model_information(source, "stable")
-                if self.engine.get_round() > 0
+                if await self.engine.get_round() > 0
                 else await self.cm.propagator.get_model_information(source, "initialization")
             )
             await self.engine.trainning_in_progress_lock.release_async()
@@ -631,12 +631,12 @@ class FederationConnector(ISADiscovery):
         logging.info(f"🔗  handle_link_message | Trigger | Received connect_to message from {source}")
         addrs = message.addrs
         for addr in addrs.split():
-            await self._meet_node(addr)
+            asyncio.create_task(self._meet_node(addr))
 
     async def _link_disconnect_from_callback(self, source, message):
         logging.info(f"🔗  handle_link_message | Trigger | Received disconnect_from message from {source}")
         for addr in message.addrs.split():
-            await self.cm.disconnect(addr, mutual_disconnection=True)
+            asyncio.create_task(self.cm.disconnect(addr, mutual_disconnection=False))
 
     async def stop(self):
         """

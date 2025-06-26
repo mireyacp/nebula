@@ -90,7 +90,7 @@ class NebulaGPS(GPSModule):
                 from nebula.core.network.communications import CommunicationsManager
 
                 cm = CommunicationsManager.get_instance()
-                if cm.learning_finished():
+                if await cm.learning_finished():
                     logging.info("GPS: Learning cycle finished, stopping location broadcast")
                     break
             except Exception:
@@ -111,7 +111,7 @@ class NebulaGPS(GPSModule):
                 from nebula.core.network.communications import CommunicationsManager
 
                 cm = CommunicationsManager.get_instance()
-                if cm.learning_finished():
+                if await cm.learning_finished():
                     logging.info("GPS: Learning cycle finished, stopping location reception")
                     break
             except Exception:
@@ -139,7 +139,7 @@ class NebulaGPS(GPSModule):
                 from nebula.core.network.communications import CommunicationsManager
 
                 cm = CommunicationsManager.get_instance()
-                if cm.learning_finished():
+                if await cm.learning_finished():
                     logging.info("GPS: Learning cycle finished, stopping geolocation notifications")
                     break
             except Exception:

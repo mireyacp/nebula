@@ -48,7 +48,7 @@ class Aggregator(ABC):
             return None
 
     async def init(self):
-        await self.us.init(self.config)
+        await self.us.init(self.engine.rb.get_role_name(True))
 
     async def update_federation_nodes(self, federation_nodes: set):
         """
@@ -108,12 +108,7 @@ class Aggregator(ABC):
             TimeoutError: If the aggregation lock is not acquired within the defined timeout.
             asyncio.CancelledError: If the aggregation lock acquisition is cancelled.
             Exception: For any other unexpected errors during the aggregation process.
-        """
-        # Check if learning cycle has finished to prevent blocking
-        if self.engine.learning_cycle_finished():
-            logging.info("🔄  get_aggregation | Learning cycle has finished, skipping aggregation")
-            return None
-            
+        """            
         try:
             timeout = self.config.participant["aggregator_args"]["aggregation_timeout"]
             logging.info(f"Aggregation timeout: {timeout} starts...")
@@ -147,6 +142,10 @@ class Aggregator(ABC):
 
         await self.us.stop_notifying_updates()
         updates = await self.us.get_round_updates()
+        if not updates:
+            logging.info(f"🔄  get_aggregation | No updates has been received..resolving conflict to continue...")
+            updates = {self._addr: await self.engine.resolve_missing_updates()}
+        
         missing_nodes = await self.us.get_round_missing_nodes()
         if missing_nodes:
             logging.info(f"🔄  get_aggregation | Aggregation incomplete, missing models from: {missing_nodes}")
