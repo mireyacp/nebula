@@ -327,7 +327,7 @@ class Engine:
                 lock_task = asyncio.create_task(self._round_in_process_lock.acquire_async())
                 await asyncio.wait_for(lock_task, timeout=3)
                 self._role_behavior = change_role_behavior(self.rb, Role.AGGREGATOR, self, self.config)
-                await self.rb.set_next_role(Role.AGGREGATOR)
+                await self.rb.set_next_role(Role.AGGREGATOR, source_to_notificate=source)
                 await self.update_self_role()
                 await self._round_in_process_lock.release_async()
             except TimeoutError:
