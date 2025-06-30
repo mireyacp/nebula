@@ -6,7 +6,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
-from torchmetrics import MetricCollection
+from torchmetrics import MetricCollection, MeanSquaredError
 from torchmetrics.classification import (
     MulticlassAccuracy,
     MulticlassConfusionMatrix,
@@ -20,6 +20,11 @@ from nebula.addons.functions import print_msg_box
 matplotlib.use("Agg")
 plt.switch_backend("Agg")
 from nebula.config.config import TRAINING_LOGGER
+
+from torchmetrics.image import (
+    PeakSignalNoiseRatio,
+    StructuralSimilarityIndexMeasure,
+)
 
 logging_training = logging.getLogger(TRAINING_LOGGER)
 
@@ -42,23 +47,24 @@ class NebulaModel(pl.LightningModule, ABC):
             loss (torch.Tensor, optional): Loss value
         """
 
-        y_pred_classes = torch.argmax(y_pred, dim=1).detach()
-        y = y.detach()
+        #y_pred_classes = torch.argmax(y_pred, dim=1).detach()
+        #y_pred_classes = y_pred
+
         if phase == "Train":
             self.logger.log_data({f"{phase}/Loss": loss.detach()})
-            self.train_metrics.update(y_pred_classes, y)
+            self.train_metrics.update(y_pred, y)
         elif phase == "Validation":
-            self.val_metrics.update(y_pred_classes, y)
+            self.val_metrics.update(y_pred, y)
         elif phase == "Test (Local)":
-            self.test_metrics.update(y_pred_classes, y)
-            self.cm.update(y_pred_classes, y) if self.cm is not None else None
+            self.test_metrics.update(y_pred, y)
+            #self.cm.update(y_pred_classes, y) if self.cm is not None else None
         elif phase == "Test (Global)":
-            self.test_metrics_global.update(y_pred_classes, y)
-            self.cm_global.update(y_pred_classes, y) if self.cm_global is not None else None
+            self.test_metrics_global.update(y_pred, y)
+            #self.cm_global.update(y_pred_classes, y) if self.cm_global is not None else None
         else:
             raise NotImplementedError
 
-        del y_pred_classes, y
+        del y_pred, y
 
     def log_metrics_end(self, phase):
         """
@@ -69,19 +75,47 @@ class NebulaModel(pl.LightningModule, ABC):
             plot_cm (bool): Plot confusion matrix
         """
         if phase == "Train":
-            output = self.train_metrics.compute()
+            metrics = self.train_metrics
         elif phase == "Validation":
-            output = self.val_metrics.compute()
+            metrics = self.val_metrics
         elif phase == "Test (Local)":
-            output = self.test_metrics.compute()
+            metrics = self.test_metrics
         elif phase == "Test (Global)":
-            output = self.test_metrics_global.compute()
+            metrics = self.test_metrics_global
         else:
             raise NotImplementedError
 
+        # Check .update() was called at least once 
+        if hasattr(metrics, "has_any") and not metrics.has_any():
+            #No metrics to compute
+            return
+
+        output = metrics.compute()
+
+        # Normalización manual
+        normalized_output = {}
+        for key, value in output.items():
+            metric_name = key.lower()
+            if "psnr" in metric_name:
+                norm_value = torch.clamp((value - 0) / 40, 0.0, 1.0)
+                normalized_output[f"{phase}/Normalized_PSNR"] = norm_value
+            elif "mse" in metric_name:
+                norm_value = 1 / (1 + value)
+                normalized_output[f"{phase}/Normalized_MSE"] = norm_value
+            elif "ssim" in metric_name:
+                normalized_output[f"{phase}/Normalized_SSIM"] = value  # Ya está en [0, 1]
+
+        # Métricas originales
         output = {
             f"{phase}/{key.replace('Multiclass', '').split('/')[-1]}": value.detach() for key, value in output.items()
         }
+
+        # Combinar
+        output.update(normalized_output)
+
+        #output = {
+        #    f"{phase}/{key.replace('Multiclass', '').split('/')[-1]}": value.detach() for key, value in output.items()
+        #}
 
         self.logger.log_data(output, step=self.global_number[phase])
 
@@ -163,21 +197,28 @@ class NebulaModel(pl.LightningModule, ABC):
         self.num_classes = num_classes
         self.learning_rate = learning_rate
 
+        #if metrics is None:
+        #    metrics = MetricCollection([
+        #        MulticlassAccuracy(num_classes=num_classes),
+        #        MulticlassPrecision(num_classes=num_classes),
+        #        MulticlassRecall(num_classes=num_classes),
+        #        MulticlassF1Score(num_classes=num_classes),
+        #    ])
         if metrics is None:
-            metrics = MetricCollection([
-                MulticlassAccuracy(num_classes=num_classes),
-                MulticlassPrecision(num_classes=num_classes),
-                MulticlassRecall(num_classes=num_classes),
-                MulticlassF1Score(num_classes=num_classes),
-            ])
+        	metrics = MetricCollection({
+			"MSE": MeanSquaredError(),
+			"PSNR": PeakSignalNoiseRatio(data_range=1.0),
+			"SSIM": StructuralSimilarityIndexMeasure(data_range=1.0),
+        })
+
         self.train_metrics = metrics.clone(prefix="Train/")
         self.val_metrics = metrics.clone(prefix="Validation/")
         self.test_metrics = metrics.clone(prefix="Test (Local)/")
         self.test_metrics_global = metrics.clone(prefix="Test (Global)/")
         del metrics
-        if confusion_matrix is None:
+        """if confusion_matrix is None:
             self.cm = MulticlassConfusionMatrix(num_classes=num_classes)
-            self.cm_global = MulticlassConfusionMatrix(num_classes=num_classes)
+            self.cm_global = MulticlassConfusionMatrix(num_classes=num_classes)"""
         if seed is not None:
             torch.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
@@ -301,15 +342,15 @@ class NebulaModel(pl.LightningModule, ABC):
 
         Returns:
         """
-        x, y = batch
-        y_pred = self.forward(x)
-        loss = self.criterion(y_pred, y)
-        y_pred_classes = torch.argmax(y_pred, dim=1)
-        accuracy = torch.mean((y_pred_classes == y).float())
+        #x, y = batch
+        #y_pred = self.forward(x)
+        #loss = self.criterion(y_pred, y)
+        #y_pred_classes = torch.argmax(y_pred, dim=1)
+        #accuracy = torch.mean((y_pred_classes == y).float())
         
         if dataloader_idx == 0:
-            self.log(f"val_loss", loss, on_epoch=True, prog_bar=False)
-            self.log(f"val_accuracy", accuracy, on_epoch=True, prog_bar=False)
+            #self.log(f"val_loss", loss, on_epoch=True, prog_bar=False)
+            #self.log(f"val_accuracy", accuracy, on_epoch=True, prog_bar=False)
             return self.step(batch, batch_idx=batch_idx, phase="Test (Local)")
         else:
             return self.step(batch, batch_idx=batch_idx, phase="Test (Global)")
@@ -324,8 +365,8 @@ class NebulaModel(pl.LightningModule, ABC):
         # In general, the test phase is done in one epoch
         self.log_metrics_end("Test (Local)")
         self.log_metrics_end("Test (Global)")
-        self.generate_confusion_matrix("Test (Local)", print_cm=True, plot_cm=True)
-        self.generate_confusion_matrix("Test (Global)", print_cm=True, plot_cm=True)
+        #self.generate_confusion_matrix("Test (Local)", print_cm=True, plot_cm=True)
+        #self.generate_confusion_matrix("Test (Global)", print_cm=True, plot_cm=True)
         self.test_metrics.reset()
         self.test_metrics_global.reset()
         self.global_number["Test (Local)"] += 1
@@ -365,7 +406,7 @@ class NebulaModelStandalone(NebulaModel):
     def on_test_epoch_end(self):
         self.log_metrics_end("Test (Local)")
         self.log_metrics_end("Test (Global)")
-        self.generate_confusion_matrix("Test (Local)", print_cm=True, plot_cm=True)
-        self.generate_confusion_matrix("Test (Global)", print_cm=True, plot_cm=True)
+        #self.generate_confusion_matrix("Test (Local)", print_cm=True, plot_cm=True)
+        #self.generate_confusion_matrix("Test (Global)", print_cm=True, plot_cm=True)
         self.test_metrics.reset()
         self.test_metrics_global.reset()

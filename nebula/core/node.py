@@ -43,7 +43,8 @@ from nebula.core.models.mnist.mlp import MNISTModelMLP
 from nebula.core.engine import Engine
 from nebula.core.training.lightning import Lightning
 from nebula.core.training.siamese import Siamese
-
+from nebula.core.models.mnist.ddpm import MNISTDiffusionModel
+from nebula.core.models.emnist.ddpm import EMNISTDiffusionModel
 # os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 # os.environ["TORCH_LOGS"] = "+dynamo"
 # os.environ["TORCHDYNAMO_VERBOSE"] = "1"
@@ -95,28 +96,28 @@ async def main(config: Config):
     model = None
 
     if dataset_name == "MNIST":
-        batch_size = 32
+        batch_size = 128
         handler = MNISTPartitionHandler
         if model_name == "MLP":
-            model = MNISTModelMLP()
+            model = MNISTDiffusionModel()
         elif model_name == "CNN":
             model = MNISTModelCNN()
         else:
             raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
     elif dataset_name == "FashionMNIST":
-        batch_size = 32
+        batch_size = 128
         handler = FashionMNISTPartitionHandler
         if model_name == "MLP":
-            model = FashionMNISTModelMLP()
+            model = MNISTDiffusionModel()
         elif model_name == "CNN":
             model = FashionMNISTModelCNN()
         else:
             raise ValueError(f"Model {model} not supported for dataset {dataset_name}")
     elif dataset_name == "EMNIST":
-        batch_size = 32
+        batch_size = 128
         handler = EMNISTPartitionHandler
         if model_name == "MLP":
-            model = EMNISTModelMLP()
+            model = EMNISTDiffusionModel()
         elif model_name == "CNN":
             model = EMNISTModelCNN()
         else:
