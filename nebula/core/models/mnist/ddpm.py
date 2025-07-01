@@ -28,7 +28,7 @@ class MNISTDiffusionModel(NebulaModel):
         seed=None, 
         # Diffusion
         batch_size=128, 
-        epochs=150, 
+        epochs=200, 
         n_samples=36,
         model_base_dim=128,
         timesteps=1000, #Steps for diffusion proccess
